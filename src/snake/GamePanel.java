@@ -25,7 +25,9 @@ public class GamePanel extends JPanel implements ActionListener {
     static final int SCREEN_HEIGHT = 600;
     static final int UNIT_SIZE = 25;
     static final int GAME_UNITS = (SCREEN_WIDTH / UNIT_SIZE) * (SCREEN_HEIGHT / UNIT_SIZE);
-    static final int DELAY = 75;
+    static final int INITIAL_DELAY = 100; // Tốc độ ban đầu chậm hơn
+    static final int MIN_DELAY = 40; // Tốc độ tối đa (nhanh nhất)
+    static final int SPEED_INCREASE_INTERVAL = 3; // Tăng tốc mỗi 3 điểm
     
     // Toạ độ của rắn
     final int x[] = new int[GAME_UNITS];
@@ -43,6 +45,10 @@ public class GamePanel extends JPanel implements ActionListener {
     Clip backgroudMusicClip; // Clip cho background music
     Clip gameOverMusicClip;// clip cho game over music
     private GameListener gameListener;
+    
+    // Biến để quản lý tốc độ
+    private int currentDelay = INITIAL_DELAY;
+    private int lastSpeedIncreaseScore = 0;
     
     // Interface để callback khi cần quay về menu
     public interface GameListener {
@@ -68,12 +74,47 @@ public class GamePanel extends JPanel implements ActionListener {
         appleY = random.nextInt((int)(SCREEN_HEIGHT/UNIT_SIZE)) * UNIT_SIZE;
     }
     
+    // Phương thức cập nhật tốc độ game
+    private void updateGameSpeed() {
+        // Tính toán tốc độ mới dựa trên điểm số
+        int speedLevel = applesEaten / SPEED_INCREASE_INTERVAL;
+        int newDelay = INITIAL_DELAY - (speedLevel * 8); // Giảm 8ms mỗi level
+        
+        // Đảm bảo không vượt quá tốc độ tối đa
+        if (newDelay < MIN_DELAY) {
+            newDelay = MIN_DELAY;
+        }
+        
+        // Chỉ cập nhật nếu tốc độ thay đổi
+        if (newDelay != currentDelay) {
+            currentDelay = newDelay;
+            
+            // Restart timer với tốc độ mới
+            if (timer != null) {
+                timer.stop();
+                timer = new Timer(currentDelay, this);
+                timer.start();
+            }
+            
+            // Hiển thị thông báo tăng tốc (tùy chọn)
+            System.out.println("Tốc độ tăng! Level: " + (speedLevel + 1) + " - Delay: " + currentDelay + "ms");
+        }
+    }
+    
+    // Phương thức lấy level tốc độ hiện tại
+    public int getCurrentSpeedLevel() {
+        return (applesEaten / SPEED_INCREASE_INTERVAL) + 1;
+    }
+    
     public void startGame() {
         // Reset game state
         bodyParts = 6;
         applesEaten = 0;
         direction = 'R';
         gameOverSoundPlayed = false;
+        currentDelay = INITIAL_DELAY; // Reset tốc độ về ban đầu
+        lastSpeedIncreaseScore = 0;
+        
         // sua loi khi restart game thi nhac game over van chay
         if(gameOverMusicClip != null && gameOverMusicClip.isRunning()){
             gameOverMusicClip.stop();
@@ -91,15 +132,20 @@ public class GamePanel extends JPanel implements ActionListener {
         if (timer != null) {
             timer.stop();
         }
-        timer = new Timer(DELAY, this);
+        timer = new Timer(currentDelay, this);
         timer.start();
         backgroundMusic("src/snake/background.wav");
     }
     
     @Override
     public void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        draw(g);
+        if(running){
+            super.paintComponent(g);
+            draw(g);
+        }
+        else{
+            draw(g);
+        }
     }
     
     // Vẽ ra rắn, táo
@@ -120,10 +166,12 @@ public class GamePanel extends JPanel implements ActionListener {
                 }
             }
             drawScore(g);
+            drawSpeedLevel(g); // Hiển thị level tốc độ
         } else {
             gameOver(g);
         }
     }
+    
     public void move() {
         for (int i = bodyParts; i > 0; i--) {
             x[i] = x[i-1];
@@ -158,6 +206,7 @@ public class GamePanel extends JPanel implements ActionListener {
             y[0] = 0;
         }
     }
+    
     // Kiểm tra rắn ăn táo và tăng kích cỡ
     public void checkApple() {
         if ((x[0] == appleX) && (y[0] == appleY)) {
@@ -165,6 +214,9 @@ public class GamePanel extends JPanel implements ActionListener {
             applesEaten++;
             newApple();
             eatSoundEffect("src/snake/eat.wav");
+            
+            // Cập nhật tốc độ sau khi ăn táo
+            updateGameSpeed();
         }
     }
     
@@ -186,9 +238,30 @@ public class GamePanel extends JPanel implements ActionListener {
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.BOLD, 20));
         FontMetrics metrics = getFontMetrics(g.getFont());
-        g.drawString("Score: " + applesEaten, 
-                    (SCREEN_WIDTH - metrics.stringWidth("Score: " + applesEaten)) / 2, 
-                    g.getFont().getSize());
+        g.drawString("Score: " + applesEaten, (SCREEN_WIDTH - metrics.stringWidth("Score: " + applesEaten)) / 2,  g.getFont().getSize());
+    }
+    
+    // Phương thức mới để hiển thị level tốc độ
+    public void drawSpeedLevel(Graphics g) {
+        g.setColor(Color.YELLOW);
+        g.setFont(new Font("Monsterrat", Font.BOLD, 16));
+        FontMetrics metrics = getFontMetrics(g.getFont());
+        String speedText = "Tốc độ: " + getCurrentSpeedLevel();
+        g.drawString(speedText, 10, 30);
+        
+        // Hiển thị thanh tiến trình đến level tiếp theo
+        int progressToNext = applesEaten % SPEED_INCREASE_INTERVAL;
+        int progressWidth = (progressToNext * 100) / SPEED_INCREASE_INTERVAL;
+        
+        // Vẽ thanh tiến trình
+        g.setColor(Color.GRAY);
+        g.fillRect(10, 35, 100, 8);
+        g.setColor(Color.CYAN);
+        g.fillRect(10, 35, progressWidth, 8);
+        
+        // Vẽ viền thanh tiến trình
+        g.setColor(Color.WHITE);
+        g.drawRect(10, 35, 100, 8);
     }
     
     public void gameOver(Graphics g) {
@@ -196,26 +269,26 @@ public class GamePanel extends JPanel implements ActionListener {
         g.setColor(Color.RED);
         g.setFont(new Font("Montserrat", Font.BOLD, 75));
         FontMetrics metrics1 = getFontMetrics(g.getFont());
-        g.drawString("Game Over", 
-                    (SCREEN_WIDTH - metrics1.stringWidth("Game Over")) / 2, 
-                    SCREEN_HEIGHT / 2);
-        
+        g.drawString("Game Over", (SCREEN_WIDTH - metrics1.stringWidth("Game Over")) / 2, SCREEN_HEIGHT / 2);
+       
         // Hiển thị điểm số
         g.setColor(Color.WHITE);
         g.setFont(new Font("Montserrat", Font.BOLD, 20));
         FontMetrics metrics2 = getFontMetrics(g.getFont());
-        g.drawString("Score: " + applesEaten, 
-                    (SCREEN_WIDTH - metrics2.stringWidth("Score: " + applesEaten)) / 2, 
-                    g.getFont().getSize());
+        g.drawString("Điểm: " + applesEaten, (SCREEN_WIDTH - metrics2.stringWidth("Score: " + applesEaten)) / 2, g.getFont().getSize());
+        
+        // Hiển thị level tốc độ đạt được
+        g.setFont(new Font("Montserrat", Font.BOLD, 16));
+        FontMetrics metrics3 = getFontMetrics(g.getFont());
+        String speedLevelText = "Level tối đa bạn đạt được: " + getCurrentSpeedLevel();
+        g.drawString(speedLevelText, (SCREEN_WIDTH - metrics3.stringWidth(speedLevelText)) / 2, g.getFont().getSize() + 30);
         
         // Hiển thị hướng dẫn
-        g.setFont(new Font("Arial", Font.PLAIN, 16));
+        g.setFont(new Font("Montserrat", Font.PLAIN, 16));
         g.setColor(Color.LIGHT_GRAY);
-        FontMetrics metrics3 = getFontMetrics(g.getFont());
-        String instruction = "Press SPACE to restart or ESC to menu";
-        g.drawString(instruction, 
-                    (SCREEN_WIDTH - metrics3.stringWidth(instruction)) / 2, 
-                    SCREEN_HEIGHT - 50);
+        FontMetrics metrics4 = getFontMetrics(g.getFont());
+        String instruction = "Ấn SPACE để chơi lại hoặc ESC để thoát ra màn hình chính";
+        g.drawString(instruction, (SCREEN_WIDTH - metrics4.stringWidth(instruction)) / 2, SCREEN_HEIGHT - 50);
         
         // Chỉ phát nhạc một lần khi game over
         if (!gameOverSoundPlayed) {
@@ -238,17 +311,18 @@ public class GamePanel extends JPanel implements ActionListener {
         }
         repaint();
     }
+    
     private void showPauseMenu() {
-    PauseMenu pauseMenu = new PauseMenu(parentFrame,
-        e -> timer.start(), // Resume
-        e -> {
-            if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) backgroudMusicClip.stop();
-            running = false;
-            if (gameListener != null) gameListener.onReturnToMenu();
-        }
-    );
-    pauseMenu.setVisible(true);
-}
+        PauseMenu pauseMenu = new PauseMenu(parentFrame,
+            e -> timer.start(), // Resume
+            e -> {
+                if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) backgroudMusicClip.stop();
+                running = false;
+                if (gameListener != null) gameListener.onReturnToMenu();
+            }
+        );
+        pauseMenu.setVisible(true);
+    }
     
     // Điều khiển rắn bằng cách đọc từ bàn phím 
     public class MyKeyAdapter extends KeyAdapter {
@@ -271,10 +345,10 @@ public class GamePanel extends JPanel implements ActionListener {
                 return;
             }
             if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-        // Tạm dừng khi đang chơi
-              timer.stop(); // Tạm dừng game
-              showPauseMenu(); // Hiện menu tạm dừng
-              return;
+                // Tạm dừng khi đang chơi
+                timer.stop(); // Tạm dừng game
+                showPauseMenu(); // Hiện menu tạm dừng
+                return;
             }
             
             switch (e.getKeyCode()) {
