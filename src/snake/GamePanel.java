@@ -14,9 +14,13 @@ import javax.swing.JPanel;
 import javax.swing.Timer;
 import javax.sound.sampled.*;
 import java.io.*;
+import javax.swing.JFrame;
 
 public class GamePanel extends JPanel implements ActionListener {
-    
+    private JFrame parentFrame;
+    public void setParentFrame(JFrame parentFrame) {
+        this.parentFrame = parentFrame;
+    }
     static final int SCREEN_WIDTH = 600;
     static final int SCREEN_HEIGHT = 600;
     static final int UNIT_SIZE = 25;
@@ -36,7 +40,8 @@ public class GamePanel extends JPanel implements ActionListener {
     boolean gameOverSoundPlayed = false;
     Timer timer;
     Random random;
-    Clip clip; // Clip cho background music
+    Clip backgroudMusicClip; // Clip cho background music
+    Clip gameOverMusicClip;// clip cho game over music
     private GameListener gameListener;
     
     // Interface để callback khi cần quay về menu
@@ -69,7 +74,11 @@ public class GamePanel extends JPanel implements ActionListener {
         applesEaten = 0;
         direction = 'R';
         gameOverSoundPlayed = false;
-        
+        // sua loi khi restart game thi nhac game over van chay
+        if(gameOverMusicClip != null && gameOverMusicClip.isRunning()){
+            gameOverMusicClip.stop();
+            gameOverMusicClip.close();
+        }
         // Reset snake position
         for (int i = 0; i < bodyParts; i++) {
             x[i] = 0;
@@ -211,8 +220,8 @@ public class GamePanel extends JPanel implements ActionListener {
         // Chỉ phát nhạc một lần khi game over
         if (!gameOverSoundPlayed) {
             // Dừng nhạc nền
-            if (clip != null && clip.isRunning()) {
-                clip.stop();
+            if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) {
+                backgroudMusicClip.stop();
             }
             // Nhạc kết thúc game
             gameOverSoundEffect("src/snake/gameover.wav");
@@ -229,6 +238,17 @@ public class GamePanel extends JPanel implements ActionListener {
         }
         repaint();
     }
+    private void showPauseMenu() {
+    PauseMenu pauseMenu = new PauseMenu(parentFrame,
+        e -> timer.start(), // Resume
+        e -> {
+            if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) backgroudMusicClip.stop();
+            running = false;
+            if (gameListener != null) gameListener.onReturnToMenu();
+        }
+    );
+    pauseMenu.setVisible(true);
+}
     
     // Điều khiển rắn bằng cách đọc từ bàn phím 
     public class MyKeyAdapter extends KeyAdapter {
@@ -242,13 +262,19 @@ public class GamePanel extends JPanel implements ActionListener {
                     // Quay về menu
                     if (gameListener != null) {
                         // Dừng nhạc nền nếu đang chạy
-                        if (clip != null && clip.isRunning()) {
-                            clip.stop();
+                        if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) {
+                            backgroudMusicClip.stop();
                         }
                         gameListener.onReturnToMenu();
                     }
                 }
                 return;
+            }
+            if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+        // Tạm dừng khi đang chơi
+              timer.stop(); // Tạm dừng game
+              showPauseMenu(); // Hiện menu tạm dừng
+              return;
             }
             
             switch (e.getKeyCode()) {
@@ -298,13 +324,13 @@ public class GamePanel extends JPanel implements ActionListener {
             File musicPath = new File(filepath);
             if (musicPath.exists()) {
                 AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
-                clip = AudioSystem.getClip();
-                clip.open(audioInput);
+                backgroudMusicClip = AudioSystem.getClip();
+                backgroudMusicClip.open(audioInput);
                 // Giảm âm thanh
-                FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+                FloatControl gainControl = (FloatControl) backgroudMusicClip.getControl(FloatControl.Type.MASTER_GAIN);
                 gainControl.setValue(-10.0f);
-                clip.loop(Clip.LOOP_CONTINUOUSLY);
-                clip.start();
+                backgroudMusicClip.loop(Clip.LOOP_CONTINUOUSLY);
+                backgroudMusicClip.start();
             } else {
                 System.out.println("Không tìm thấy tệp nhạc!");
             }
@@ -332,9 +358,9 @@ public class GamePanel extends JPanel implements ActionListener {
             File musicPath = new File(filepath);
             if (musicPath.exists()) {
                 AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
-                Clip gameOverClip = AudioSystem.getClip();
-                gameOverClip.open(audioInput);
-                gameOverClip.start();
+                gameOverMusicClip = AudioSystem.getClip();
+                gameOverMusicClip.open(audioInput);
+                gameOverMusicClip.start();
             } else {
                 System.out.println("Không tìm thấy tệp nhạc!");
             }
