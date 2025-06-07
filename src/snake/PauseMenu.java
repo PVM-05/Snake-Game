@@ -10,7 +10,8 @@ public class PauseMenu extends JDialog {
         setLayout(new GridLayout(3, 1, 10, 10));
         setSize(300, 200);
         setLocationRelativeTo(parent);
-
+        // lam menu khong the dong duoc
+        setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE); 
         JButton resumeButton = new JButton("Tiếp tục");
         JButton menuButton = new JButton("Về menu chính");
         JButton exitConfirmButton = new JButton("Thoát game"); // nút mới
