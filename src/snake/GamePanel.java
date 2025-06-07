@@ -68,6 +68,18 @@ public class GamePanel extends JPanel implements ActionListener {
         this.gameListener = listener;
     }
     
+    // Phương thức dừng tất cả âm thanh
+    public void stopAllSounds() {
+        if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) {
+            backgroudMusicClip.stop();
+            backgroudMusicClip.close();
+        }
+        if (gameOverMusicClip != null && gameOverMusicClip.isRunning()) {
+            gameOverMusicClip.stop();
+            gameOverMusicClip.close();
+        }
+    }
+    
     // Tạo ra vị trí random táo
     public void newApple() {
         appleX = random.nextInt((int)(SCREEN_WIDTH/UNIT_SIZE)) * UNIT_SIZE;
@@ -115,11 +127,9 @@ public class GamePanel extends JPanel implements ActionListener {
         currentDelay = INITIAL_DELAY; // Reset tốc độ về ban đầu
         lastSpeedIncreaseScore = 0;
         
-        // sua loi khi restart game thi nhac game over van chay
-        if(gameOverMusicClip != null && gameOverMusicClip.isRunning()){
-            gameOverMusicClip.stop();
-            gameOverMusicClip.close();
-        }
+        // Dừng tất cả âm thanh trước khi bắt đầu game mới
+        stopAllSounds();
+        
         // Reset snake position
         for (int i = 0; i < bodyParts; i++) {
             x[i] = 0;
@@ -238,7 +248,7 @@ public class GamePanel extends JPanel implements ActionListener {
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.BOLD, 20));
         FontMetrics metrics = getFontMetrics(g.getFont());
-        g.drawString("Score: " + applesEaten, (SCREEN_WIDTH - metrics.stringWidth("Score: " + applesEaten)) / 2,  g.getFont().getSize());
+        g.drawString("Điểm: " + applesEaten, (SCREEN_WIDTH - metrics.stringWidth("Điểm: " + applesEaten)) / 2,  g.getFont().getSize());
     }
     
     // Phương thức mới để hiển thị level tốc độ
@@ -275,7 +285,7 @@ public class GamePanel extends JPanel implements ActionListener {
         g.setColor(Color.WHITE);
         g.setFont(new Font("Montserrat", Font.BOLD, 20));
         FontMetrics metrics2 = getFontMetrics(g.getFont());
-        g.drawString("Điểm: " + applesEaten, (SCREEN_WIDTH - metrics2.stringWidth("Score: " + applesEaten)) / 2, g.getFont().getSize());
+        g.drawString("Điểm: " + applesEaten, (SCREEN_WIDTH - metrics2.stringWidth("Điểm: " + applesEaten)) / 2, g.getFont().getSize());
         
         // Hiển thị level tốc độ đạt được
         g.setFont(new Font("Montserrat", Font.BOLD, 16));
@@ -313,10 +323,22 @@ public class GamePanel extends JPanel implements ActionListener {
     }
     
     private void showPauseMenu() {
+        // Tạm dừng nhạc nền khi hiện menu pause
+        if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) {
+            backgroudMusicClip.stop();
+        }
+        
         PauseMenu pauseMenu = new PauseMenu(parentFrame,
-            e -> timer.start(), // Resume
             e -> {
-                if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) backgroudMusicClip.stop();
+                // Resume game và tiếp tục phát nhạc
+                timer.start();
+                if (backgroudMusicClip != null && !backgroudMusicClip.isRunning()) {
+                    backgroudMusicClip.start();
+                }
+            },
+            e -> {
+                // Dừng tất cả âm thanh khi quay về menu chính
+                stopAllSounds();
                 running = false;
                 if (gameListener != null) gameListener.onReturnToMenu();
             }
@@ -335,10 +357,8 @@ public class GamePanel extends JPanel implements ActionListener {
                 } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
                     // Quay về menu
                     if (gameListener != null) {
-                        // Dừng nhạc nền nếu đang chạy
-                        if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) {
-                            backgroudMusicClip.stop();
-                        }
+                        // Dừng tất cả âm thanh trước khi quay về menu
+                        stopAllSounds();
                         gameListener.onReturnToMenu();
                     }
                 }
