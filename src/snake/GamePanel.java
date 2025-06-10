@@ -125,7 +125,7 @@ public class GamePanel extends JPanel implements ActionListener {
         // Cập nhật tốc độ di chuyển
         if (newMoveDelay != currentMoveDelay) {
             currentMoveDelay = newMoveDelay;
-            System.out.println("Tốc độ tăng! Level: " + (speedLevel + 1) + " - Move Delay: " + currentMoveDelay + "ms");
+            System.out.println("Toc do tang! Level: " + (speedLevel + 1) + " - Move Delay: " + currentMoveDelay + "ms");
         }
     }
     
@@ -320,6 +320,9 @@ public class GamePanel extends JPanel implements ActionListener {
                 particleSystem.createDeathEffect(x[0], y[0]);
                 if (renderTimer != null) {
                     renderTimer.stop();
+                }
+                if (gameListener != null) {
+                    ((GameFrame) parentFrame).onGameOver(applesEaten);
                 }
                 break;
             }

@@ -96,13 +96,15 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
     
     public void onGameOver(int finalScore) {
         // Xử lý khi game over - lưu điểm số nếu cần
-        if (!currentPlayerName.isEmpty() && finalScore > 0) {
-            SqlManager sqlManager = new SqlManager();
-            try {
-                sqlManager.savePlayerScore(currentPlayerName, finalScore);
-                System.out.println("Đã lưu điểm số: " + currentPlayerName + " - " + finalScore);
-                
-                // Kiểm tra xem đây có phải là kỷ lục mới
+        if (currentPlayerName == null || currentPlayerName.trim().isEmpty()) {
+            currentPlayerName = "Người chơi"; // Đảm bảo tên không rỗng
+        }
+        if (finalScore > 0) {
+        SqlManager sqlManager = new SqlManager();
+        try {
+            boolean saved = sqlManager.savePlayerScore(currentPlayerName, finalScore);
+            if (saved) {
+                System.out.println("Da luu diem so: " + currentPlayerName + " - " + finalScore);
                 if (sqlManager.isNewRecord(currentPlayerName, finalScore)) {
                     showMessage(
                         "Chúc mừng " + currentPlayerName + "! Bạn đã đạt kỷ lục mới: " + finalScore,
@@ -110,20 +112,27 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
                         JOptionPane.INFORMATION_MESSAGE
                     );
                 }
-            } catch (Exception e) {
-                System.err.println("Lỗi khi lưu điểm số: " + e.getMessage());
+            } else {
                 showMessage(
-                    "Không thể lưu điểm số do lỗi kết nối. Vui lòng thử lại sau.",
+                    "Không thể lưu điểm số do lỗi hệ thống. Vui lòng thử lại.",
                     "Lỗi",
                     JOptionPane.ERROR_MESSAGE
                 );
-            } finally {
-                sqlManager.close();
             }
+        } catch (Exception e) {
+            System.err.println("Lỗi khi lưu điểm số: " + e.getMessage());
+            showMessage(
+                "Không thể lưu điểm số do lỗi kết nối. Vui lòng thử lại sau.",
+                "Lỗi",
+                JOptionPane.ERROR_MESSAGE
+            );
+        } finally {
+            sqlManager.close();
         }
-        // Tự động làm mới bảng xếp hạng sau khi game over
-        scoreboardPanel.refreshScores();
     }
+    // Tự động làm mới bảng xếp hạng sau khi game over
+    scoreboardPanel.refreshScores();
+}
     
     // Implement ScoreboardPanel.ScoreboardListener
     @Override

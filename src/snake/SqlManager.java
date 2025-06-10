@@ -26,17 +26,21 @@ public class SqlManager {
 
     // Lưu điểm số người chơi - phương thức này được gọi từ GameFrame
     public boolean savePlayerScore(String name, int score) {
-        String sql = "INSERT INTO playerinfo (name, score) VALUES (?, ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, name);
-            stmt.setInt(2, score);
-            int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0;
-        } catch (SQLException e) {
-            System.err.println("Loi luu diem so: " + e.getMessage());
-            return false;
-        }
+        if (name == null || name.trim().isEmpty()) {
+        name = "Người chơi";
     }
+    String sql = "INSERT INTO playerinfo (name, score, play_time) VALUES (?, ?, NOW())";
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setString(1, name.trim());
+        stmt.setInt(2, score);
+        int rowsAffected = stmt.executeUpdate();
+        System.out.println("Da luu: " + name + " - Điểm: " + score);
+        return rowsAffected > 0;
+    } catch (SQLException e) {
+        System.err.println("Loi luu diem so: " + e.getMessage());
+        return false;
+    }
+}
 
     // Lưu thông tin người chơi (alias cho savePlayerScore để tương thích)
     public boolean savePlayer(String name, int score) {
