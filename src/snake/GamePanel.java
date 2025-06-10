@@ -21,9 +21,16 @@ import javax.swing.JFrame;
 public class GamePanel extends JPanel implements ActionListener {
     private JFrame parentFrame;
     private ParticleSystem particleSystem;
-    
+    private String playerName = "";
     public void setParentFrame(JFrame parentFrame) {
         this.parentFrame = parentFrame;
+    }
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
+    }
+
+    public String getPlayerName() {
+        return playerName;
     }
     
     static final int SCREEN_WIDTH = 600;
@@ -564,10 +571,9 @@ public class GamePanel extends JPanel implements ActionListener {
             case "levelup":
                 // Tạo hiệu ứng level up
                 for (int i = 0; i < 20; i++) {
-                    particleSystem.createSparkle(x + (int)(Math.random() * UNIT_SIZE), 
-                                               y + (int)(Math.random() * UNIT_SIZE));
+                    particleSystem.createSparkle(x + (int)(Math.random() * UNIT_SIZE), y + (int)(Math.random() * UNIT_SIZE));
                 }
-                break;
+            break;
         }
     }
 }

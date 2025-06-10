@@ -14,18 +14,22 @@ import javax.swing.JPanel;
 
 public class MenuPanel extends JPanel {
     static final int SCREEN_WIDTH = 600;
-    static final int SCREEN_HEIGHT = 600;
-    
+    static final int SCREEN_HEIGHT = 600; 
     private Rectangle startButtonBounds;
     private Rectangle exitButtonBounds;
+    private Rectangle scoreboardButtonBounds;
     private MenuListener menuListener;
     private boolean startButtonHovered = false;
     private boolean exitButtonHovered = false;
+    private boolean scoreboardButtonHovered = false;
+    private String playerName = ""; 
+    private boolean isEnteringName = false;
     
     // Interface để callback khi có sự kiện menu
     public interface MenuListener {
-        void onStartGame();
+        void onStartGame(String playerName);
         void onExitGame();
+        void onShowScoreboard();
     }
     
     public MenuPanel(MenuListener listener) {
@@ -55,78 +59,164 @@ public class MenuPanel extends JPanel {
         FontMetrics titleMetrics = g.getFontMetrics();
         String title = "RẮN SĂN MỒI";
         int titleX = (SCREEN_WIDTH - titleMetrics.stringWidth(title)) / 2;
-        int titleY = SCREEN_HEIGHT / 3;
+        int titleY = SCREEN_HEIGHT / 4;
         g.drawString(title, titleX, titleY);
         
+        // Vẽ form nhập tên
+        g.setFont(new Font("Montserrat", Font.PLAIN, 18));
+        FontMetrics nameMetrics = g.getFontMetrics();
+        String nameLabel = "Tên người chơi:";
+        int nameLabelX = (SCREEN_WIDTH - nameMetrics.stringWidth(nameLabel)) / 2;
+        int nameLabelY = titleY + 80;
+        g.setColor(Color.CYAN);
+        g.drawString(nameLabel, nameLabelX, nameLabelY);
+        
+        // Vẽ khung nhập tên
+        int nameBoxWidth = 300;
+        int nameBoxHeight = 35;
+        int nameBoxX = (SCREEN_WIDTH - nameBoxWidth) / 2;
+        int nameBoxY = nameLabelY + 10;
+        
+        // Màu khung thay đổi khi đang nhập
+        if (isEnteringName) {
+            g.setColor(new Color(100, 100, 255));
+        } else {
+            g.setColor(Color.GRAY);
+        }
+        g.drawRect(nameBoxX, nameBoxY, nameBoxWidth, nameBoxHeight);
+        
+        // Vẽ tên đã nhập
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Montserrat", Font.PLAIN, 16));
+        String displayName = playerName.isEmpty() ? "Nhấn Enter để nhập tên..." : playerName;
+        if (playerName.isEmpty()) {
+            g.setColor(Color.LIGHT_GRAY);
+        }
+        g.drawString(displayName, nameBoxX + 10, nameBoxY + 23);
+        
+        // Vẽ cursor nếu đang nhập
+        if (isEnteringName) {
+            g.setColor(Color.WHITE);
+            int cursorX = nameBoxX + 10 + g.getFontMetrics().stringWidth(playerName);
+            g.drawLine(cursorX, nameBoxY + 8, cursorX, nameBoxY + 28);
+        }
+        
         // Vẽ nút Start Game
-        g.setFont(new Font("Montserrat", Font.PLAIN, 24));
+        g.setFont(new Font("Montserrat", Font.PLAIN, 20));
         FontMetrics buttonMetrics = g.getFontMetrics();
-        String startText = "BẮT ĐẦU";
+        String startText = "BẮT ĐẦU CHƠI";
         int startX = (SCREEN_WIDTH - buttonMetrics.stringWidth(startText)) / 2;
-        int startY = SCREEN_HEIGHT / 2;
+        int startY = nameBoxY + 90;
         
         // Màu nút Start thay đổi khi hover
         if (startButtonHovered) {
-            g.setColor(new Color(70, 200, 70)); // Sáng hơn khi hover
+            g.setColor(new Color(70, 200, 70));
         } else {
             g.setColor(new Color(50, 150, 50));
         }
-        g.fillRoundRect(startX - 20, startY - 30, buttonMetrics.stringWidth(startText) + 40, 40, 15, 15);
+        g.fillRoundRect(startX - 20, startY - 25, buttonMetrics.stringWidth(startText) + 40, 35, 15, 15);
         
         // Viền nút Start
         g.setColor(Color.WHITE);
-        g.drawRoundRect(startX - 20, startY - 30, buttonMetrics.stringWidth(startText) + 40, 40, 15, 15);
+        g.drawRoundRect(startX - 20, startY - 25, buttonMetrics.stringWidth(startText) + 40, 35, 15, 15);
         g.drawString(startText, startX, startY);
         
         // Lưu vùng nút Start
-        startButtonBounds = new Rectangle(startX - 20, startY - 30, 
-                                        buttonMetrics.stringWidth(startText) + 40, 40);
+        startButtonBounds = new Rectangle(startX - 20, startY - 25, 
+                                        buttonMetrics.stringWidth(startText) + 40, 35);
+        
+        // Vẽ nút Bảng xếp hạng
+        String scoreboardText = "BẢNG XẾP HẠNG";
+        int scoreboardX = (SCREEN_WIDTH - buttonMetrics.stringWidth(scoreboardText)) / 2;
+        int scoreboardY = startY + 60;
+        
+        if (scoreboardButtonHovered) {
+            g.setColor(new Color(70, 70, 200));
+        } else {
+            g.setColor(new Color(50, 50, 150));
+        }
+        g.fillRoundRect(scoreboardX - 20, scoreboardY - 25, buttonMetrics.stringWidth(scoreboardText) + 40, 35, 15, 15);
+        
+        g.setColor(Color.WHITE);
+        g.drawRoundRect(scoreboardX - 20, scoreboardY - 25, buttonMetrics.stringWidth(scoreboardText) + 40, 35, 15, 15);
+        g.drawString(scoreboardText, scoreboardX, scoreboardY);
+        
+        scoreboardButtonBounds = new Rectangle(scoreboardX - 20, scoreboardY - 25, 
+                                             buttonMetrics.stringWidth(scoreboardText) + 40, 35);
         
         // Vẽ nút Exit
         String exitText = "THOÁT";
         int exitX = (SCREEN_WIDTH - buttonMetrics.stringWidth(exitText)) / 2;
-        int exitY = startY + 80;
+        int exitY = scoreboardY + 60;
         
-        // Màu nút Exit thay đổi khi hover
         if (exitButtonHovered) {
-            g.setColor(new Color(220, 70, 70)); // Sáng hơn khi hover
+            g.setColor(new Color(220, 70, 70));
         } else {
             g.setColor(new Color(200, 50, 50));
         }
-        g.fillRoundRect(exitX - 20, exitY - 30, buttonMetrics.stringWidth(exitText) + 40, 40, 15, 15);
+        g.fillRoundRect(exitX - 20, exitY - 25, buttonMetrics.stringWidth(exitText) + 40, 35, 15, 15);
         
-        // Viền nút Exit
         g.setColor(Color.WHITE);
-        g.drawRoundRect(exitX - 20, exitY - 30, buttonMetrics.stringWidth(exitText) + 40, 40, 15, 15);
+        g.drawRoundRect(exitX - 20, exitY - 25, buttonMetrics.stringWidth(exitText) + 40, 35, 15, 15);
         g.drawString(exitText, exitX, exitY);
         
-        // Lưu vùng nút Exit
-        exitButtonBounds = new Rectangle(exitX - 20, exitY - 30, 
-                                       buttonMetrics.stringWidth(exitText) + 40, 40);
+        exitButtonBounds = new Rectangle(exitX - 20, exitY - 25, 
+                                       buttonMetrics.stringWidth(exitText) + 40, 35);
         
-        // Vẽ hướng dẫn điều khiển
-        g.setFont(new Font("Arial", Font.PLAIN, 14));
+        // Vẽ hướng dẫn
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
         g.setColor(Color.LIGHT_GRAY);
         FontMetrics instructionMetrics = g.getFontMetrics();
-        String instruction1 = "Ấn Enter để bắt đầu trò chơi";
-        String instruction2 = "Ấn Esc để thoát";
+        String instruction1 = "Enter: Nhập tên | Space: Bắt đầu | S: Bảng xếp hạng | Esc: Thoát";
         
         int instruction1X = (SCREEN_WIDTH - instructionMetrics.stringWidth(instruction1)) / 2;
-        int instruction2X = (SCREEN_WIDTH - instructionMetrics.stringWidth(instruction2)) / 2;
-        int instructionY = SCREEN_HEIGHT - 80;
+        int instructionY = SCREEN_HEIGHT - 30;
         
         g.drawString(instruction1, instruction1X, instructionY);
-        g.drawString(instruction2, instruction2X, instructionY + 20);
+    }
+    
+    public String getPlayerName() {
+        return playerName;
     }
     
     // Xử lý sự kiện bàn phím
     private class MenuKeyAdapter extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
+            if (isEnteringName) {
+                // Xử lý khi đang nhập tên
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    isEnteringName = false;
+                    repaint();
+                } else if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+                    if (playerName.length() > 0) {
+                        playerName = playerName.substring(0, playerName.length() - 1);
+                        repaint();
+                    }
+                } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    isEnteringName = false;
+                    repaint();
+                }
+                return;
+            }
+            
+            // Xử lý khi không đang nhập tên
             switch (e.getKeyCode()) {
                 case KeyEvent.VK_ENTER:
+                    isEnteringName = true;
+                    repaint();
+                    break;
+                case KeyEvent.VK_SPACE:
+                    if (playerName.trim().isEmpty()) {
+                        playerName = "Người chơi";
+                    }
                     if (menuListener != null) {
-                        menuListener.onStartGame();
+                        menuListener.onStartGame(playerName.trim());
+                    }
+                    break;
+                case KeyEvent.VK_S:
+                    if (menuListener != null) {
+                        menuListener.onShowScoreboard();
                     }
                     break;
                 case KeyEvent.VK_ESCAPE:
@@ -134,6 +224,19 @@ public class MenuPanel extends JPanel {
                         menuListener.onExitGame();
                     }
                     break;
+            }
+        }
+        
+        @Override
+        public void keyTyped(KeyEvent e) {
+            if (isEnteringName) {
+                char c = e.getKeyChar();
+                if (c != KeyEvent.CHAR_UNDEFINED && c != '\b' && c != '\n' && c != '\r') {
+                    if (playerName.length() < 20) { // Giới hạn độ dài tên
+                        playerName += c;
+                        repaint();
+                    }
+                }
             }
         }
     }
@@ -145,32 +248,26 @@ public class MenuPanel extends JPanel {
             int mouseX = e.getX();
             int mouseY = e.getY();
             
-            // Kiểm tra click vào nút Start
             if (startButtonBounds != null && startButtonBounds.contains(mouseX, mouseY)) {
-                if (menuListener != null) {
-                    menuListener.onStartGame();
+                if (playerName.trim().isEmpty()) {
+                    playerName = "Người chơi";
                 }
-            }
-            // Kiểm tra click vào nút Exit
-            else if (exitButtonBounds != null && exitButtonBounds.contains(mouseX, mouseY)) {
+                if (menuListener != null) {
+                    menuListener.onStartGame(playerName.trim());
+                }
+            } else if (scoreboardButtonBounds != null && scoreboardButtonBounds.contains(mouseX, mouseY)) {
+                if (menuListener != null) {
+                    menuListener.onShowScoreboard();
+                }
+            } else if (exitButtonBounds != null && exitButtonBounds.contains(mouseX, mouseY)) {
                 if (menuListener != null) {
                     menuListener.onExitGame();
                 }
             }
         }
-        
-        @Override
-        public void mousePressed(MouseEvent e) {
-            // Có thể thêm hiệu ứng khi nhấn nút
-        }
-        
-        @Override
-        public void mouseReleased(MouseEvent e) {
-            // Có thể thêm hiệu ứng khi thả nút
-        }
     }
     
-    // Xử lý sự kiện di chuyển chuột (hover effect)
+    // Xử lý sự kiện di chuyển chuột
     private class MenuMouseMotionAdapter extends MouseAdapter {
         @Override
         public void mouseMoved(MouseEvent e) {
@@ -179,17 +276,20 @@ public class MenuPanel extends JPanel {
             
             boolean wasStartHovered = startButtonHovered;
             boolean wasExitHovered = exitButtonHovered;
+            boolean wasScoreboardHovered = scoreboardButtonHovered;
             
-            // Kiểm tra hover trên nút Start
             startButtonHovered = startButtonBounds != null && 
                                 startButtonBounds.contains(mouseX, mouseY);
             
-            // Kiểm tra hover trên nút Exit
             exitButtonHovered = exitButtonBounds != null && 
                               exitButtonBounds.contains(mouseX, mouseY);
+                              
+            scoreboardButtonHovered = scoreboardButtonBounds != null && 
+                                    scoreboardButtonBounds.contains(mouseX, mouseY);
             
-            // Chỉ repaint khi trạng thái hover thay đổi
-            if (wasStartHovered != startButtonHovered || wasExitHovered != exitButtonHovered) {
+            if (wasStartHovered != startButtonHovered || 
+                wasExitHovered != exitButtonHovered || 
+                wasScoreboardHovered != scoreboardButtonHovered) {
                 repaint();
             }
         }
