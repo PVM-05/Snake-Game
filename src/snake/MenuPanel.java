@@ -10,6 +10,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 public class MenuPanel extends JPanel {
@@ -25,7 +26,6 @@ public class MenuPanel extends JPanel {
     private String playerName = ""; 
     private boolean isEnteringName = false;
     
-    // Interface để callback khi có sự kiện menu
     public interface MenuListener {
         void onStartGame(String playerName);
         void onExitGame();
@@ -38,10 +38,7 @@ public class MenuPanel extends JPanel {
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
         
-        // Thêm key listener
         this.addKeyListener(new MenuKeyAdapter());
-        
-        // Thêm mouse listener
         this.addMouseListener(new MenuMouseAdapter());
         this.addMouseMotionListener(new MenuMouseMotionAdapter());
     }
@@ -53,7 +50,7 @@ public class MenuPanel extends JPanel {
     }
     
     private void drawMenu(Graphics g) {
-        // Vẽ tiêu đề
+        // Draw title
         g.setColor(Color.WHITE);
         g.setFont(new Font("Montserrat", Font.BOLD, 40));
         FontMetrics titleMetrics = g.getFontMetrics();
@@ -62,7 +59,7 @@ public class MenuPanel extends JPanel {
         int titleY = SCREEN_HEIGHT / 4;
         g.drawString(title, titleX, titleY);
         
-        // Vẽ form nhập tên
+        // Draw player name label and input box
         g.setFont(new Font("Montserrat", Font.PLAIN, 18));
         FontMetrics nameMetrics = g.getFontMetrics();
         String nameLabel = "Tên người chơi:";
@@ -71,61 +68,53 @@ public class MenuPanel extends JPanel {
         g.setColor(Color.CYAN);
         g.drawString(nameLabel, nameLabelX, nameLabelY);
         
-        // Vẽ khung nhập tên
         int nameBoxWidth = 300;
         int nameBoxHeight = 35;
         int nameBoxX = (SCREEN_WIDTH - nameBoxWidth) / 2;
         int nameBoxY = nameLabelY + 10;
         
-        // Màu khung thay đổi khi đang nhập
         if (isEnteringName) {
-            g.setColor(new Color(100, 100, 255));
+            g.setColor(Color.GREEN);
         } else {
             g.setColor(Color.GRAY);
         }
         g.drawRect(nameBoxX, nameBoxY, nameBoxWidth, nameBoxHeight);
         
-        // Vẽ tên đã nhập
         g.setColor(Color.WHITE);
-        g.setFont(new Font("Montserrat", Font.PLAIN, 16));
+        g.setFont(new Font("Arial", Font.PLAIN, 16));
         String displayName = playerName.isEmpty() ? "Nhấn Enter để nhập tên..." : playerName;
         if (playerName.isEmpty()) {
             g.setColor(Color.LIGHT_GRAY);
         }
-        g.drawString(displayName, nameBoxX + 10, nameBoxY + 23);
+        g.drawString(displayName, nameBoxX + 10, nameBoxY + 25);
         
-        // Vẽ cursor nếu đang nhập
         if (isEnteringName) {
             g.setColor(Color.WHITE);
             int cursorX = nameBoxX + 10 + g.getFontMetrics().stringWidth(playerName);
-            g.drawLine(cursorX, nameBoxY + 8, cursorX, nameBoxY + 28);
+            g.drawLine(cursorX, nameBoxY + 8, cursorX, nameBoxY + nameBoxHeight - 8);
         }
         
-        // Vẽ nút Start Game
+        // Draw start button
         g.setFont(new Font("Montserrat", Font.PLAIN, 20));
         FontMetrics buttonMetrics = g.getFontMetrics();
-        String startText = "BẮT ĐẦU CHƠI";
+        String startText = "BẮT ĐẦU";
         int startX = (SCREEN_WIDTH - buttonMetrics.stringWidth(startText)) / 2;
         int startY = nameBoxY + 90;
         
-        // Màu nút Start thay đổi khi hover
         if (startButtonHovered) {
             g.setColor(new Color(70, 200, 70));
         } else {
-            g.setColor(new Color(50, 150, 50));
+            g.setColor(Color.GREEN);
         }
         g.fillRoundRect(startX - 20, startY - 25, buttonMetrics.stringWidth(startText) + 40, 35, 15, 15);
-        
-        // Viền nút Start
         g.setColor(Color.WHITE);
         g.drawRoundRect(startX - 20, startY - 25, buttonMetrics.stringWidth(startText) + 40, 35, 15, 15);
         g.drawString(startText, startX, startY);
         
-        // Lưu vùng nút Start
         startButtonBounds = new Rectangle(startX - 20, startY - 25, 
-                                        buttonMetrics.stringWidth(startText) + 40, 35);
+                                          buttonMetrics.stringWidth(startText) + 40, 35);
         
-        // Vẽ nút Bảng xếp hạng
+        // Draw scoreboard button
         String scoreboardText = "BẢNG XẾP HẠNG";
         int scoreboardX = (SCREEN_WIDTH - buttonMetrics.stringWidth(scoreboardText)) / 2;
         int scoreboardY = startY + 60;
@@ -136,15 +125,14 @@ public class MenuPanel extends JPanel {
             g.setColor(new Color(50, 50, 150));
         }
         g.fillRoundRect(scoreboardX - 20, scoreboardY - 25, buttonMetrics.stringWidth(scoreboardText) + 40, 35, 15, 15);
-        
         g.setColor(Color.WHITE);
         g.drawRoundRect(scoreboardX - 20, scoreboardY - 25, buttonMetrics.stringWidth(scoreboardText) + 40, 35, 15, 15);
         g.drawString(scoreboardText, scoreboardX, scoreboardY);
         
         scoreboardButtonBounds = new Rectangle(scoreboardX - 20, scoreboardY - 25, 
-                                             buttonMetrics.stringWidth(scoreboardText) + 40, 35);
+                                               buttonMetrics.stringWidth(scoreboardText) + 40, 35);
         
-        // Vẽ nút Exit
+        // Draw exit button
         String exitText = "THOÁT";
         int exitX = (SCREEN_WIDTH - buttonMetrics.stringWidth(exitText)) / 2;
         int exitY = scoreboardY + 60;
@@ -152,26 +140,23 @@ public class MenuPanel extends JPanel {
         if (exitButtonHovered) {
             g.setColor(new Color(220, 70, 70));
         } else {
-            g.setColor(new Color(200, 50, 50));
+            g.setColor(Color.RED);
         }
         g.fillRoundRect(exitX - 20, exitY - 25, buttonMetrics.stringWidth(exitText) + 40, 35, 15, 15);
-        
         g.setColor(Color.WHITE);
         g.drawRoundRect(exitX - 20, exitY - 25, buttonMetrics.stringWidth(exitText) + 40, 35, 15, 15);
         g.drawString(exitText, exitX, exitY);
         
         exitButtonBounds = new Rectangle(exitX - 20, exitY - 25, 
-                                       buttonMetrics.stringWidth(exitText) + 40, 35);
+                                         buttonMetrics.stringWidth(exitText) + 40, 35);
         
-        // Vẽ hướng dẫn
+        // Draw instructions
         g.setFont(new Font("Arial", Font.PLAIN, 12));
         g.setColor(Color.LIGHT_GRAY);
         FontMetrics instructionMetrics = g.getFontMetrics();
-        String instruction1 = "Enter: Nhập tên | Space: Bắt đầu | S: Bảng xếp hạng | Esc: Thoát";
-        
+        String instruction1 = "Enter: Nhập tên | Space: Bắt đầu | S: Bảng Xếp hạng | Esc: Thoát";
         int instruction1X = (SCREEN_WIDTH - instructionMetrics.stringWidth(instruction1)) / 2;
         int instructionY = SCREEN_HEIGHT - 30;
-        
         g.drawString(instruction1, instruction1X, instructionY);
     }
     
@@ -179,15 +164,22 @@ public class MenuPanel extends JPanel {
         return playerName;
     }
     
-    // Xử lý sự kiện bàn phím
     private class MenuKeyAdapter extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
             if (isEnteringName) {
-                // Xử lý khi đang nhập tên
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    isEnteringName = false;
-                    repaint();
+                    if (playerName.trim().isEmpty()) {
+                        JOptionPane.showMessageDialog(
+                            MenuPanel.this,
+                            "Vui lòng nhập tên hợp lệ!",
+                            "Cảnh báo",
+                            JOptionPane.WARNING_MESSAGE
+                        );
+                    } else {
+                        isEnteringName = false;
+                        repaint();
+                    }
                 } else if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
                     if (playerName.length() > 0) {
                         playerName = playerName.substring(0, playerName.length() - 1);
@@ -200,7 +192,6 @@ public class MenuPanel extends JPanel {
                 return;
             }
             
-            // Xử lý khi không đang nhập tên
             switch (e.getKeyCode()) {
                 case KeyEvent.VK_ENTER:
                     isEnteringName = true;
@@ -208,9 +199,13 @@ public class MenuPanel extends JPanel {
                     break;
                 case KeyEvent.VK_SPACE:
                     if (playerName.trim().isEmpty()) {
-                        playerName = "Người chơi";
-                    }
-                    if (menuListener != null) {
+                        JOptionPane.showMessageDialog(
+                            MenuPanel.this,
+                            "Vui lòng nhập tên trước khi bắt đầu!",
+                            "Cảnh báo",
+                            JOptionPane.WARNING_MESSAGE
+                        );
+                    } else if (menuListener != null) {
                         menuListener.onStartGame(playerName.trim());
                     }
                     break;
@@ -232,7 +227,7 @@ public class MenuPanel extends JPanel {
             if (isEnteringName) {
                 char c = e.getKeyChar();
                 if (c != KeyEvent.CHAR_UNDEFINED && c != '\b' && c != '\n' && c != '\r') {
-                    if (playerName.length() < 20) { // Giới hạn độ dài tên
+                    if (playerName.length() < 20) {
                         playerName += c;
                         repaint();
                     }
@@ -241,7 +236,6 @@ public class MenuPanel extends JPanel {
         }
     }
     
-    // Xử lý sự kiện click chuột
     private class MenuMouseAdapter extends MouseAdapter {
         @Override
         public void mouseClicked(MouseEvent e) {
@@ -250,9 +244,13 @@ public class MenuPanel extends JPanel {
             
             if (startButtonBounds != null && startButtonBounds.contains(mouseX, mouseY)) {
                 if (playerName.trim().isEmpty()) {
-                    playerName = "Người chơi";
-                }
-                if (menuListener != null) {
+                    JOptionPane.showMessageDialog(
+                        MenuPanel.this,
+                        "Vui lòng nhập tên trước khi bắt đầu!",
+                        "Cảnh báo",
+                        JOptionPane.WARNING_MESSAGE
+                    );
+                } else if (menuListener != null) {
                     menuListener.onStartGame(playerName.trim());
                 }
             } else if (scoreboardButtonBounds != null && scoreboardButtonBounds.contains(mouseX, mouseY)) {
@@ -267,7 +265,6 @@ public class MenuPanel extends JPanel {
         }
     }
     
-    // Xử lý sự kiện di chuyển chuột
     private class MenuMouseMotionAdapter extends MouseAdapter {
         @Override
         public void mouseMoved(MouseEvent e) {
@@ -279,13 +276,13 @@ public class MenuPanel extends JPanel {
             boolean wasScoreboardHovered = scoreboardButtonHovered;
             
             startButtonHovered = startButtonBounds != null && 
-                                startButtonBounds.contains(mouseX, mouseY);
+                                 startButtonBounds.contains(mouseX, mouseY);
             
             exitButtonHovered = exitButtonBounds != null && 
-                              exitButtonBounds.contains(mouseX, mouseY);
+                                exitButtonBounds.contains(mouseX, mouseY);
                               
             scoreboardButtonHovered = scoreboardButtonBounds != null && 
-                                    scoreboardButtonBounds.contains(mouseX, mouseY);
+                                      scoreboardButtonBounds.contains(mouseX, mouseY);
             
             if (wasStartHovered != startButtonHovered || 
                 wasExitHovered != exitButtonHovered || 
