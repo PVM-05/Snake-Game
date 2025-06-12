@@ -17,11 +17,18 @@ import javax.swing.Timer;
 import javax.sound.sampled.*;
 import java.io.*;
 import javax.swing.JFrame;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GamePanel extends JPanel implements ActionListener {
     private JFrame parentFrame;
     private ParticleSystem particleSystem;
     private String playerName = "";
+    private List<PowerUp> powerUps = new ArrayList<>();
+    private List<PowerUpNotifications> notifications = new ArrayList<>(); // Danh sách thông báo
+    private boolean doubleScoreActive = false;
+    private long doubleScoreEndTime = 0;
+    private boolean shieldActive = false;
     
     public void setParentFrame(JFrame parentFrame) {
         this.parentFrame = parentFrame;
@@ -34,22 +41,20 @@ public class GamePanel extends JPanel implements ActionListener {
     public String getPlayerName() {
         return playerName;
     }
-    
+
     static final int SCREEN_WIDTH = 600;
     static final int SCREEN_HEIGHT = 600;
     static final int UNIT_SIZE = 25;
     static final int GAME_UNITS = (SCREEN_WIDTH / UNIT_SIZE) * (SCREEN_HEIGHT / UNIT_SIZE);
-    
     static final int TARGET_FPS = 60;
     static final int FRAME_DELAY = 1000 / TARGET_FPS;
-    
     static final int INITIAL_MOVE_DELAY = 150;
     static final int MIN_MOVE_DELAY = 60;
     static final int SPEED_INCREASE_INTERVAL = 3;
-    
     final int x[] = new int[GAME_UNITS];
     final int y[] = new int[GAME_UNITS];
-    
+    static final int POWER_UP_CHANCE = 10;
+   
     int bodyParts = 6;
     int applesEaten;
     int appleX;
@@ -62,7 +67,7 @@ public class GamePanel extends JPanel implements ActionListener {
     Clip backgroudMusicClip;
     Clip gameOverMusicClip;
     private GameListener gameListener;
-    
+  
     private long lastMoveTime = 0;
     private int currentMoveDelay = INITIAL_MOVE_DELAY;
     private long lastFrameTime = 0;
@@ -82,6 +87,7 @@ public class GamePanel extends JPanel implements ActionListener {
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
         this.addKeyListener(new MyKeyAdapter());
+        notifications = new ArrayList<>(); // Khởi tạo
     }
     
     public void setGameListener(GameListener listener) {
@@ -102,7 +108,49 @@ public class GamePanel extends JPanel implements ActionListener {
     public void newApple() {
         appleX = random.nextInt((int)(SCREEN_WIDTH/UNIT_SIZE)) * UNIT_SIZE;
         appleY = random.nextInt((int)(SCREEN_HEIGHT/UNIT_SIZE)) * UNIT_SIZE;
+        // 10% sinh ra powerup
+        if (random.nextInt(100) < POWER_UP_CHANCE) {
+            int powerUpX = random.nextInt((int)(SCREEN_WIDTH/UNIT_SIZE)) * UNIT_SIZE;
+            int powerUpY = random.nextInt((int)(SCREEN_HEIGHT/UNIT_SIZE)) * UNIT_SIZE;
+            PowerUp.Type[] types = PowerUp.Type.values();
+            PowerUp.Type type = types[random.nextInt(types.length)];
+            powerUps.add(new PowerUp(powerUpX, powerUpY, type));
+        }
     }
+    // Thêm phương thức kiểm tra power-up
+public void checkPowerUps() {
+    for (int i = powerUps.size() - 1; i >= 0; i--) {
+        PowerUp powerUp = powerUps.get(i);
+        if (x[0] == powerUp.getX() && y[0] == powerUp.getY()) {
+            applyPowerUp(powerUp);
+            powerUps.remove(i);
+            particleSystem.createExplosion(powerUp.getX(), powerUp.getY());
+            playPowerUpsSoundEffect("src/snake/powerup.wav");
+        } else if (System.currentTimeMillis() - powerUp.getSpawnTime() > PowerUp.getDuration()) {
+            powerUps.remove(i);
+        }
+    }
+}
+
+
+// Thêm phương thức áp dụng hiệu ứng power-up
+private void applyPowerUp(PowerUp powerUp) {
+    switch (powerUp.getType()) {
+        case SPEED_BOOST:
+            currentMoveDelay = Math.max(MIN_MOVE_DELAY, currentMoveDelay - 20);
+            notifications.add(new PowerUpNotifications("Tăng tốc độ!"));
+            break;
+        case DOUBLE_SCORE:
+            doubleScoreActive = true;
+            doubleScoreEndTime = System.currentTimeMillis() + 5000; // 5 seconds
+            notifications.add(new PowerUpNotifications("Gấp đôi điểm!"));
+            break;
+        case SHIELD:
+            shieldActive = true;
+            notifications.add(new PowerUpNotifications("Khiên bảo vệ!"));
+            break;
+    }
+}
     
     private void updateGameSpeed() {
         int speedLevel = applesEaten / SPEED_INCREASE_INTERVAL;
@@ -131,7 +179,7 @@ public class GamePanel extends JPanel implements ActionListener {
         frameCount = 0;
         fpsTimer = System.currentTimeMillis();
         particleSystem.clear();
-        
+
         stopAllSounds();
         
         for (int i = 0; i < bodyParts; i++) {
@@ -179,6 +227,8 @@ public class GamePanel extends JPanel implements ActionListener {
         if (running) {
             particleSystem.createSparkle(appleX, appleY);
             drawApple(g2d);
+            drawPowerUps(g2d);
+            drawNotifications(g2d);
             drawSnake(g2d);
             particleSystem.draw(g2d);
             drawScore(g2d);
@@ -189,6 +239,24 @@ public class GamePanel extends JPanel implements ActionListener {
             gameOver(g);
         }
     }
+      private void drawNotifications(Graphics2D g2d) {
+        for (int i = notifications.size() - 1; i >= 0; i--) {
+            PowerUpNotifications notif = notifications.get(i);
+            if (notif.isExpired()) {
+                notifications.remove(i);
+                continue;
+            }
+            notif.draw(g2d, SCREEN_WIDTH, 50 + (notifications.size() - i - 1) * 40);
+        }
+    }
+    private void drawPowerUps(Graphics2D g2d) {
+    for (PowerUp powerUp : powerUps) {
+        g2d.setColor(powerUp.getColor());
+        g2d.fillRect(powerUp.getX(), powerUp.getY(), UNIT_SIZE, UNIT_SIZE);
+        g2d.setColor(Color.WHITE);
+        g2d.drawString(powerUp.getType().toString().charAt(0) + "", powerUp.getX() + 8, powerUp.getY() + 18);
+    }
+}
     
     private void drawApple(Graphics2D g2d) {
         g2d.setColor(Color.RED);
@@ -262,7 +330,7 @@ public class GamePanel extends JPanel implements ActionListener {
     public void checkApple() {
         if ((x[0] == appleX) && (y[0] == appleY)) {
             bodyParts++;
-            applesEaten++;
+            applesEaten += doubleScoreActive ? 2 : 1;
             newApple();
             eatSoundEffect("src/snake/eat.wav");
             particleSystem.createExplosion(appleX, appleY);
@@ -270,25 +338,30 @@ public class GamePanel extends JPanel implements ActionListener {
         }
     }
     
-    public void checkCollision() {
-        for (int i = bodyParts; i > 0; i--) {
-            if ((x[0] == x[i]) && (y[0] == y[i])) {
-                running = false;
-                particleSystem.createDeathEffect(x[0], y[0]);
-                if (renderTimer != null) {
-                    renderTimer.stop();
-                }
-                if (parentFrame != null) {
-                    ((GameFrame) parentFrame).onGameOver(applesEaten);
-                }
-                break;
+   public void checkCollision() {
+    for (int i = bodyParts; i > 0; i--) {
+        if (x[0] == x[i] && y[0] == y[i]) {
+            if (shieldActive) {
+                shieldActive = false;
+                particleSystem.createExplosion(x[0], y[0]);
+                return;
             }
+            running = false;
+            particleSystem.createDeathEffect(x[0], y[0]);
+            if (renderTimer != null) {
+                renderTimer.stop();
+            }
+            if (parentFrame != null) {
+                ((GameFrame) parentFrame).onGameOver(applesEaten);
+            }
+            break;
         }
     }
+}
     
     public void drawScore(Graphics g) {
         g.setColor(Color.WHITE);
-        g.setFont(new Font("Arial", Font.BOLD, 20));
+        g.setFont(new Font("Montserrat", Font.BOLD, 20));
         FontMetrics metrics = getFontMetrics(g.getFont());
         g.drawString("Điểm: " + applesEaten, (SCREEN_WIDTH - metrics.stringWidth("Điểm: " + applesEaten)) / 2, g.getFont().getSize());
     }
@@ -348,9 +421,13 @@ public class GamePanel extends JPanel implements ActionListener {
             if (currentTime - lastMoveTime >= currentMoveDelay) {
                 move();
                 checkApple();
+                checkPowerUps();
                 checkCollision();
                 lastMoveTime = currentTime;
             }
+            if (doubleScoreActive && currentTime > doubleScoreEndTime) {
+            doubleScoreActive = false;
+        }
         }
         particleSystem.update();
         repaint();
@@ -428,13 +505,15 @@ public class GamePanel extends JPanel implements ActionListener {
         }
     }
     
-    public void playSoundEffect(String filepath) {
+    public void playPowerUpsSoundEffect(String filepath) {
         try {
             File musicPath = new File(filepath);
             if (musicPath.exists()) {
                 AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
                 Clip soundClip = AudioSystem.getClip();
                 soundClip.open(audioInput);
+                FloatControl gainControl = (FloatControl) soundClip.getControl(FloatControl.Type.MASTER_GAIN);
+            gainControl.setValue(-10.0f);
                 soundClip.start();
             } else {
                 System.out.println("Sound file not found!");

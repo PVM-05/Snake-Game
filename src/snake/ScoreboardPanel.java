@@ -66,16 +66,13 @@ public class ScoreboardPanel extends JPanel {
     
     private void loadTopScores() {
         topScores = new ArrayList<>();
-        SqlManager sqlManager = new SqlManager();
+        DatabaseManager sqlManager = new DatabaseManager();
         
         try {
             topScores = sqlManager.getTopScores(10);
-            System.out.println("Loaded: " + topScores.size() + " scores from database");
+            System.out.println("Da tai: " + topScores.size() + " diem tu database");
         } catch (SQLException e) {
-            System.err.println("Error loading scoreboard: " + e.getMessage());
-            topScores.add(new PlayerScore("Sample Player 1", 25, "2025-09-01 10:00:00"));
-            topScores.add(new PlayerScore("Sample Player 2", 20, "2025-09-02 11:00:00"));
-            topScores.add(new PlayerScore("Sample Player 3", 15, "2025-09-03 12:00:00"));
+            System.err.println("Loi tai bang diem: " + e.getMessage());
         } finally {
             sqlManager.close();
         }
@@ -188,7 +185,7 @@ public class ScoreboardPanel extends JPanel {
     private void drawStatistics(Graphics g) {
         if (topScores.isEmpty()) return;
         
-        SqlManager sqlManager = new SqlManager();
+        DatabaseManager sqlManager = new DatabaseManager();
         try {
             int totalPlayers = sqlManager.getTotalPlayers();
             int totalGames = sqlManager.getTotalGames();
@@ -201,14 +198,14 @@ public class ScoreboardPanel extends JPanel {
             g.drawString("Tổng số lượt chơi: " + totalGames, 250, statsY);
             g.drawString("Điểm trung bình: " + String.format("%.1f", avgScore), 450, statsY);
         } catch (Exception e) {
-            System.err.println("Error fetching statistics: " + e.getMessage());
+            System.err.println("Loi khong lay duoc thong tin: " + e.getMessage());
         } finally {
             sqlManager.close();
         }
     }
     
     public void refreshScores() {
-        System.out.println("Refreshing scoreboard...");
+        System.out.println("Lam moi bang diem...");
         loadTopScores();
         repaint();
     }

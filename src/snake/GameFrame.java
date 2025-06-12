@@ -41,7 +41,7 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
     
     @Override
     public void onStartGame(String playerName) {
-        SqlManager sqlManager = new SqlManager();
+        DatabaseManager sqlManager = new DatabaseManager();
         try {
             currentPlayerID = sqlManager.createPlayer(playerName);
             currentPlayerName = playerName;
@@ -89,7 +89,7 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
             currentPlayerID = createDefaultPlayer();
         }
         if (finalScore > 0) {
-            SqlManager sqlManager = new SqlManager();
+            DatabaseManager sqlManager = new DatabaseManager();
             try {
                 boolean saved = sqlManager.savePlayerScore(currentPlayerID, finalScore);
                 if (saved) {
@@ -123,7 +123,7 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
     }
     
     private String createDefaultPlayer() {
-        SqlManager sqlManager = new SqlManager();
+        DatabaseManager sqlManager = new DatabaseManager();
         try {
             currentPlayerName = "Người chơi";
             return sqlManager.createPlayer(currentPlayerName);
