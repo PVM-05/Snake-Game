@@ -86,7 +86,7 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
             }
         } catch (SQLException e) {
             System.err.println("Error loading settings: " + e.getMessage());
-            showMessage("Không thể tải cài đặt. Vui lòng thử lại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showMessage("Khong the tai cai dat.", "Loi", JOptionPane.ERROR_MESSAGE);
         } finally {
             sqlManager.close();
         }
@@ -110,7 +110,6 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
         } finally {
             sqlManager.close();
         }
-        showMenu();
     }
     
     public void onResumeGame(String playerID, Theme.Type theme, int soundVolumePercent) {
@@ -123,9 +122,9 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
             cardLayout.show(mainPanel, "GAME");
             gamePanel.requestFocusInWindow();
             gamePanel.backgroundMusic("src/snake/background.wav");
-            showMessage("Cài đặt đã được lưu! Tiếp tục chơi.", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+           //  showMessage("Cài đặt đã được lưu! Tiếp tục chơi.", "Thành công", JOptionPane.INFORMATION_MESSAGE);
         } else {
-            showMessage("Không thể lưu cài đặt!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showMessage("Khong the luu cai dat!", "Loi", JOptionPane.ERROR_MESSAGE);
         }
         sqlManager.close();
     }

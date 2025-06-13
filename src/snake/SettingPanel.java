@@ -15,6 +15,7 @@ public class SettingPanel extends JPanel {
     private SettingsListener settingsListener;
     private JSlider volumeSlider;
     private JLabel volumeLabel;
+    private JButton themeButton; // Thêm biến để truy cập themeButton
 
     public interface SettingsListener {
         void onSaveSettings(String playerID, Theme.Type theme, int soundVolumePercent);
@@ -30,59 +31,62 @@ public class SettingPanel extends JPanel {
         setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridwidth = GridBagConstraints.REMAINDER;
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(10, 0, 10, 0);
+        gbc.fill = GridBagConstraints.CENTER;
 
-        // Title
+        // tiêu đề
         JLabel titleLabel = new JLabel("CÀI ĐẶT", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Montserrat", Font.BOLD, 30));
-        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setForeground(Color.GRAY);
         gbc.gridy = 0;
         add(titleLabel, gbc);
 
-        // Theme selection
-        JLabel themeLabel = new JLabel("Theme: ", SwingConstants.RIGHT);
+        // chọn theme
+        JLabel themeLabel = new JLabel("Chủ đề:", SwingConstants.RIGHT);
         themeLabel.setFont(new Font("Montserrat", Font.PLAIN, 20));
         themeLabel.setForeground(Color.WHITE);
         gbc.gridy = 1;
         gbc.anchor = GridBagConstraints.EAST;
         add(themeLabel, gbc);
 
-        JButton themeButton = createStyledButton(selectedTheme.toString());
+        themeButton = createStyledButton(selectedTheme.toString());
         themeButton.addActionListener(e -> {
             Theme.Type[] themes = Theme.Type.values();
             selectedTheme = themes[(selectedTheme.ordinal() + 1) % themes.length];
             themeButton.setText(selectedTheme.toString());
         });
         gbc.gridy = 2;
+        gbc.anchor = GridBagConstraints.CENTER;
         add(themeButton, gbc);
 
-        // Volume slider
-        JLabel volumeTitle = new JLabel("Âm lượng: ", SwingConstants.RIGHT);
+        // thanh âm lượng
+        JLabel volumeTitle = new JLabel("Âm lượng:", SwingConstants.RIGHT);
         volumeTitle.setFont(new Font("Montserrat", Font.PLAIN, 20));
         volumeTitle.setForeground(Color.WHITE);
         gbc.gridy = 3;
+        gbc.anchor = GridBagConstraints.EAST;
         add(volumeTitle, gbc);
 
         volumeSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, soundVolumePercent);
         volumeSlider.setBackground(Color.BLACK);
-        volumeSlider.setForeground(Color.CYAN);
+        volumeSlider.setForeground(Color.GRAY);
         volumeSlider.setPreferredSize(new Dimension(200, 50));
         volumeSlider.addChangeListener(e -> {
             soundVolumePercent = volumeSlider.getValue();
             volumeLabel.setText(soundVolumePercent + "%");
         });
         gbc.gridy = 4;
+        gbc.anchor = GridBagConstraints.CENTER;
         add(volumeSlider, gbc);
 
         volumeLabel = new JLabel(soundVolumePercent + "%", SwingConstants.CENTER);
-        volumeLabel.setFont(new Font("Montserrat", Font.PLAIN, 16));
+        volumeLabel.setFont(new Font("Montserrat", Font.PLAIN, 14));
         volumeLabel.setForeground(Color.WHITE);
         gbc.gridy = 5;
         add(volumeLabel, gbc);
 
-        // Save button
-        JButton saveButton = createStyledButton("LƯU VÀ THOÁT");
+        // nút lưu
+        JButton saveButton = createStyledButton("LƯU");
         saveButton.addActionListener(e -> {
             if (settingsListener != null) {
                 settingsListener.onSaveSettings(playerID, selectedTheme, soundVolumePercent);
@@ -119,15 +123,22 @@ public class SettingPanel extends JPanel {
         this.settingsListener = listener;
     }
 
-    public void setTheme(Theme.Type theme) {
-        this.selectedTheme = theme;
+    public void setTheme(Theme.Type type) {
+        this.selectedTheme = type;
+        if (themeButton != null) {
+            themeButton.setText(type.toString()); // Cập nhật văn bản button
+        }
         repaint();
     }
 
     public void setSoundVolumePercent(int volumePercent) {
         this.soundVolumePercent = Math.max(0, Math.min(100, volumePercent));
-        volumeSlider.setValue(soundVolumePercent);
-        volumeLabel.setText(soundVolumePercent + "%");
+        if (volumeSlider != null) {
+            volumeSlider.setValue(soundVolumePercent);
+        }
+        if (volumeLabel != null) {
+            volumeLabel.setText(soundVolumePercent + "%");
+        }
     }
 
     private JButton createStyledButton(String text) {
@@ -135,7 +146,7 @@ public class SettingPanel extends JPanel {
         button.setFont(new Font("Montserrat", Font.BOLD, 20));
         button.setBackground(Color.GREEN.darker());
         button.setForeground(Color.WHITE);
-        button.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
+        button.setBorder(BorderFactory.createLineBorder(Color.GREEN, 2));
         button.setFocusPainted(false);
         button.setPreferredSize(new Dimension(200, 40));
 
