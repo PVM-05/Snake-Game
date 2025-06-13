@@ -25,10 +25,24 @@ public class GamePanel extends JPanel implements ActionListener {
     private ParticleSystem particleSystem;
     private String playerName = "";
     private List<PowerUp> powerUps = new ArrayList<>();
-    private List<PowerUpNotifications> notifications = new ArrayList<>(); // Danh sách thông báo
+    private List<PowerUpNotifications> notifications = new ArrayList<>();
     private boolean doubleScoreActive = false;
     private long doubleScoreEndTime = 0;
     private boolean shieldActive = false;
+    private Theme theme = new Theme(Theme.Type.CLASSIC);
+    
+    private int soundVolumePercent = 50;
+
+    public void setSoundVolumePercent(int volumePercent) {
+        this.soundVolumePercent = Math.max(0, Math.min(100, volumePercent));
+    }
+
+    private float getDecibelFromPercent() {
+        if (soundVolumePercent == 0) {
+            return -80.0f;
+        }
+        return -80.0f + (soundVolumePercent / 100.0f) * 80.0f;
+    }
     
     public void setParentFrame(JFrame parentFrame) {
         this.parentFrame = parentFrame;
@@ -40,6 +54,11 @@ public class GamePanel extends JPanel implements ActionListener {
 
     public String getPlayerName() {
         return playerName;
+    }
+
+    public void setTheme(Theme.Type themeType) {
+        this.theme = new Theme(themeType);
+        repaint();
     }
 
     static final int SCREEN_WIDTH = 600;
@@ -64,7 +83,7 @@ public class GamePanel extends JPanel implements ActionListener {
     boolean gameOverSoundPlayed = false;
     Timer renderTimer;
     Random random;
-    Clip backgroudMusicClip;
+    Clip backgroundMusicClip;
     Clip gameOverMusicClip;
     private GameListener gameListener;
   
@@ -87,7 +106,7 @@ public class GamePanel extends JPanel implements ActionListener {
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
         this.addKeyListener(new MyKeyAdapter());
-        notifications = new ArrayList<>(); // Khởi tạo
+        notifications = new ArrayList<>();
     }
     
     public void setGameListener(GameListener listener) {
@@ -95,20 +114,104 @@ public class GamePanel extends JPanel implements ActionListener {
     }
     
     public void stopAllSounds() {
-        if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) {
-            backgroudMusicClip.stop();
-            backgroudMusicClip.close();
+        System.out.println("Stopping all sounds...");
+        if (backgroundMusicClip != null) {
+            if (backgroundMusicClip.isRunning()) {
+                backgroundMusicClip.stop();
+                System.out.println("Stopped background music clip.");
+            }
+            backgroundMusicClip.close();
+            backgroundMusicClip = null;
+            System.out.println("Closed background music clip.");
         }
-        if (gameOverMusicClip != null && gameOverMusicClip.isRunning()) {
-            gameOverMusicClip.stop();
+        if (gameOverMusicClip != null) {
+            if (gameOverMusicClip.isRunning()) {
+                gameOverMusicClip.stop();
+                System.out.println("Stopped game over music clip.");
+            }
             gameOverMusicClip.close();
+            gameOverMusicClip = null;
+            System.out.println("Closed game over music clip.");
+        }
+    }
+
+    public void saveGameState(String playerID) {
+        if (playerID == null || playerID.isEmpty()) {
+            System.err.println("PlayerID không hợp lệ khi lưu trạng thái game.");
+            return;
+        }
+        GameState state = new GameState(x, y, bodyParts, applesEaten, appleX, appleY, direction,
+                                        running, currentMoveDelay, powerUps, doubleScoreActive,
+                                        doubleScoreEndTime, shieldActive);
+        DatabaseManager sqlManager = new DatabaseManager();
+        try {
+            boolean saved = sqlManager.saveGameState(playerID, state);
+            if (saved) {
+                System.out.println("Lưu trạng thái game thành công cho playerID: " + playerID);
+            } else {
+                System.out.println("Lưu trạng thái game thất bại cho playerID: " + playerID);
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi lưu trạng thái game: " + e.getMessage());
+        } finally {
+            sqlManager.close();
+        }
+    }
+
+    public void loadGameState(String playerID) {
+        DatabaseManager sqlManager = new DatabaseManager();
+        try {
+            GameState state = sqlManager.loadGameState(playerID);
+            if (state != null) {
+                System.arraycopy(state.getX(), 0, this.x, 0, GAME_UNITS);
+                System.arraycopy(state.getY(), 0, this.y, 0, GAME_UNITS);
+                this.bodyParts = state.getBodyParts();
+                this.applesEaten = state.getApplesEaten();
+                this.appleX = state.getAppleX();
+                this.appleY = state.getAppleY();
+                this.direction = state.getDirection();
+                this.running = state.isRunning();
+                this.currentMoveDelay = state.getCurrentMoveDelay();
+                this.powerUps = state.getPowerUps();
+                this.doubleScoreActive = state.isDoubleScoreActive();
+                this.doubleScoreEndTime = state.getDoubleScoreEndTime();
+                this.shieldActive = state.isShieldActive();
+                this.lastMoveTime = System.currentTimeMillis();
+
+                DatabaseManager.Settings settings = sqlManager.getPlayerSettings(playerID);
+                if (settings != null) {
+                    setTheme(Theme.Type.valueOf(settings.getTheme()));
+                    setSoundVolumePercent(settings.getSoundVolumePercent());
+                } else {
+                    setTheme(Theme.Type.CLASSIC);
+                    setSoundVolumePercent(50);
+                }
+
+                stopAllSounds();
+                if (running) {
+                    if (renderTimer != null) {
+                        renderTimer.stop();
+                    }
+                    renderTimer = new Timer(FRAME_DELAY, this);
+                    renderTimer.start();
+                    backgroundMusic("src/snake/background.wav");
+                }
+                repaint();
+            } else {
+                System.out.println("No saved game state found for playerID: " + playerID);
+                startGame();
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading game state: " + e.getMessage());
+            startGame();
+        } finally {
+            sqlManager.close();
         }
     }
     
     public void newApple() {
         appleX = random.nextInt((int)(SCREEN_WIDTH/UNIT_SIZE)) * UNIT_SIZE;
         appleY = random.nextInt((int)(SCREEN_HEIGHT/UNIT_SIZE)) * UNIT_SIZE;
-        // 10% sinh ra powerup
         if (random.nextInt(100) < POWER_UP_CHANCE) {
             int powerUpX = random.nextInt((int)(SCREEN_WIDTH/UNIT_SIZE)) * UNIT_SIZE;
             int powerUpY = random.nextInt((int)(SCREEN_HEIGHT/UNIT_SIZE)) * UNIT_SIZE;
@@ -117,40 +220,38 @@ public class GamePanel extends JPanel implements ActionListener {
             powerUps.add(new PowerUp(powerUpX, powerUpY, type));
         }
     }
-    // Thêm phương thức kiểm tra power-up
-public void checkPowerUps() {
-    for (int i = powerUps.size() - 1; i >= 0; i--) {
-        PowerUp powerUp = powerUps.get(i);
-        if (x[0] == powerUp.getX() && y[0] == powerUp.getY()) {
-            applyPowerUp(powerUp);
-            powerUps.remove(i);
-            particleSystem.createExplosion(powerUp.getX(), powerUp.getY());
-            playPowerUpsSoundEffect("src/snake/powerup.wav");
-        } else if (System.currentTimeMillis() - powerUp.getSpawnTime() > PowerUp.getDuration()) {
-            powerUps.remove(i);
+
+    public void checkPowerUps() {
+        for (int i = powerUps.size() - 1; i >= 0; i--) {
+            PowerUp powerUp = powerUps.get(i);
+            if (x[0] == powerUp.getX() && y[0] == powerUp.getY()) {
+                applyPowerUp(powerUp);
+                powerUps.remove(i);
+                particleSystem.createExplosion(powerUp.getX(), powerUp.getY());
+                playPowerUpsSoundEffect("src/snake/powerup.wav");
+            } else if (System.currentTimeMillis() - powerUp.getSpawnTime() > PowerUp.getDuration()) {
+                powerUps.remove(i);
+            }
         }
     }
-}
 
-
-// Thêm phương thức áp dụng hiệu ứng power-up
-private void applyPowerUp(PowerUp powerUp) {
-    switch (powerUp.getType()) {
-        case SPEED_BOOST:
-            currentMoveDelay = Math.max(MIN_MOVE_DELAY, currentMoveDelay - 20);
-            notifications.add(new PowerUpNotifications("Tăng tốc độ!"));
-            break;
-        case DOUBLE_SCORE:
-            doubleScoreActive = true;
-            doubleScoreEndTime = System.currentTimeMillis() + 5000; // 5 seconds
-            notifications.add(new PowerUpNotifications("Gấp đôi điểm!"));
-            break;
-        case SHIELD:
-            shieldActive = true;
-            notifications.add(new PowerUpNotifications("Khiên bảo vệ!"));
-            break;
+    private void applyPowerUp(PowerUp powerUp) {
+        switch (powerUp.getType()) {
+            case SPEED_BOOST:
+                currentMoveDelay = Math.max(MIN_MOVE_DELAY, currentMoveDelay - 20);
+                notifications.add(new PowerUpNotifications("Tăng tốc độ!"));
+                break;
+            case DOUBLE_SCORE:
+                doubleScoreActive = true;
+                doubleScoreEndTime = System.currentTimeMillis() + 5000;
+                notifications.add(new PowerUpNotifications("Gấp đôi điểm!"));
+                break;
+            case SHIELD:
+                shieldActive = true;
+                notifications.add(new PowerUpNotifications("Khiên bảo vệ!"));
+                break;
+        }
     }
-}
     
     private void updateGameSpeed() {
         int speedLevel = applesEaten / SPEED_INCREASE_INTERVAL;
@@ -239,7 +340,8 @@ private void applyPowerUp(PowerUp powerUp) {
             gameOver(g);
         }
     }
-      private void drawNotifications(Graphics2D g2d) {
+
+    private void drawNotifications(Graphics2D g2d) {
         for (int i = notifications.size() - 1; i >= 0; i--) {
             PowerUpNotifications notif = notifications.get(i);
             if (notif.isExpired()) {
@@ -249,14 +351,15 @@ private void applyPowerUp(PowerUp powerUp) {
             notif.draw(g2d, SCREEN_WIDTH, 50 + (notifications.size() - i - 1) * 40);
         }
     }
+
     private void drawPowerUps(Graphics2D g2d) {
-    for (PowerUp powerUp : powerUps) {
-        g2d.setColor(powerUp.getColor());
-        g2d.fillRect(powerUp.getX(), powerUp.getY(), UNIT_SIZE, UNIT_SIZE);
-        g2d.setColor(Color.WHITE);
-        g2d.drawString(powerUp.getType().toString().charAt(0) + "", powerUp.getX() + 8, powerUp.getY() + 18);
+        for (PowerUp powerUp : powerUps) {
+            g2d.setColor(powerUp.getColor());
+            g2d.fillRect(powerUp.getX(), powerUp.getY(), UNIT_SIZE, UNIT_SIZE);
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(powerUp.getType().toString().charAt(0) + "", powerUp.getX() + 8, powerUp.getY() + 18);
+        }
     }
-}
     
     private void drawApple(Graphics2D g2d) {
         g2d.setColor(Color.RED);
@@ -338,26 +441,27 @@ private void applyPowerUp(PowerUp powerUp) {
         }
     }
     
-   public void checkCollision() {
-    for (int i = bodyParts; i > 0; i--) {
-        if (x[0] == x[i] && y[0] == y[i]) {
-            if (shieldActive) {
-                shieldActive = false;
-                particleSystem.createExplosion(x[0], y[0]);
-                return;
+    public void checkCollision() {
+        for (int i = bodyParts; i > 0; i--) {
+            if (x[0] == x[i] && y[0] == y[i]) {
+                if (shieldActive) {
+                    shieldActive = false;
+                    particleSystem.createExplosion(x[0], y[0]);
+                    return;
+                }
+                running = false;
+                stopAllSounds();
+                particleSystem.createDeathEffect(x[0], y[0]);
+                if (renderTimer != null) {
+                    renderTimer.stop();
+                }
+                if (parentFrame != null) {
+                    ((GameFrame) parentFrame).onGameOver(applesEaten);
+                }
+                break;
             }
-            running = false;
-            particleSystem.createDeathEffect(x[0], y[0]);
-            if (renderTimer != null) {
-                renderTimer.stop();
-            }
-            if (parentFrame != null) {
-                ((GameFrame) parentFrame).onGameOver(applesEaten);
-            }
-            break;
         }
     }
-}
     
     public void drawScore(Graphics g) {
         g.setColor(Color.WHITE);
@@ -406,9 +510,6 @@ private void applyPowerUp(PowerUp powerUp) {
         g.drawString(instruction, (SCREEN_WIDTH - metrics4.stringWidth(instruction)) / 2, SCREEN_HEIGHT - 50);
         
         if (!gameOverSoundPlayed) {
-            if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) {
-                backgroudMusicClip.stop();
-            }
             gameOverSoundEffect("src/snake/gameover.wav");
             gameOverSoundPlayed = true;
         }
@@ -426,16 +527,21 @@ private void applyPowerUp(PowerUp powerUp) {
                 lastMoveTime = currentTime;
             }
             if (doubleScoreActive && currentTime > doubleScoreEndTime) {
-            doubleScoreActive = false;
-        }
+                doubleScoreActive = false;
+            }
         }
         particleSystem.update();
         repaint();
     }
     
     private void showPauseMenu() {
-        if (backgroudMusicClip != null && backgroudMusicClip.isRunning()) {
-            backgroudMusicClip.stop();
+        if (renderTimer != null) {
+            renderTimer.stop();
+        }
+        stopAllSounds();
+        if (parentFrame instanceof GameFrame) {
+            String playerID = ((GameFrame) parentFrame).getCurrentPlayerID();
+            saveGameState(playerID);
         }
         
         PauseMenu pauseMenu = new PauseMenu(parentFrame,
@@ -443,13 +549,15 @@ private void applyPowerUp(PowerUp powerUp) {
                 if (renderTimer != null) {
                     renderTimer.start();
                 }
-                if (backgroudMusicClip != null && !backgroudMusicClip.isRunning()) {
-                    backgroudMusicClip.start();
-                }
+                backgroundMusic("src/snake/background.wav");
                 lastMoveTime = System.currentTimeMillis();
             },
             e -> {
                 stopAllSounds();
+                if (parentFrame instanceof GameFrame) {
+                    String playerID = ((GameFrame) parentFrame).getCurrentPlayerID();
+                    saveGameState(playerID);
+                }
                 running = false;
                 if (gameListener != null) gameListener.onReturnToMenu();
             }
@@ -462,6 +570,7 @@ private void applyPowerUp(PowerUp powerUp) {
         public void keyPressed(KeyEvent e) {
             if (!running) {
                 if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+                    stopAllSounds();
                     startGame();
                 } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
                     stopAllSounds();
@@ -473,9 +582,6 @@ private void applyPowerUp(PowerUp powerUp) {
             }
             
             if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                if (renderTimer != null) {
-                    renderTimer.stop();
-                }
                 showPauseMenu();
                 return;
             }
@@ -513,13 +619,14 @@ private void applyPowerUp(PowerUp powerUp) {
                 Clip soundClip = AudioSystem.getClip();
                 soundClip.open(audioInput);
                 FloatControl gainControl = (FloatControl) soundClip.getControl(FloatControl.Type.MASTER_GAIN);
-            gainControl.setValue(-10.0f);
+                gainControl.setValue(getDecibelFromPercent());
                 soundClip.start();
+                System.out.println("Playing power-up sound: " + filepath);
             } else {
-                System.out.println("Sound file not found!");
+                System.out.println("Power-up sound file not found: " + filepath);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Error playing power-up sound: " + e.getMessage());
         }
     }
     
@@ -527,32 +634,44 @@ private void applyPowerUp(PowerUp powerUp) {
         try {
             File musicPath = new File(filepath);
             if (musicPath.exists()) {
+                if (backgroundMusicClip != null && backgroundMusicClip.isRunning()) {
+                    backgroundMusicClip.stop();
+                    backgroundMusicClip.close();
+                    backgroundMusicClip = null;
+                    System.out.println("Stopped and closed existing background music before starting new.");
+                }
                 AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
-                backgroudMusicClip = AudioSystem.getClip();
-                backgroudMusicClip.open(audioInput);
-                FloatControl gainControl = (FloatControl) backgroudMusicClip.getControl(FloatControl.Type.MASTER_GAIN);
-                gainControl.setValue(-10.0f);
-                backgroudMusicClip.loop(Clip.LOOP_CONTINUOUSLY);
-                backgroudMusicClip.start();
+                backgroundMusicClip = AudioSystem.getClip();
+                backgroundMusicClip.open(audioInput);
+                FloatControl gainControl = (FloatControl) backgroundMusicClip.getControl(FloatControl.Type.MASTER_GAIN);
+                gainControl.setValue(getDecibelFromPercent());
+                backgroundMusicClip.loop(Clip.LOOP_CONTINUOUSLY);
+                backgroundMusicClip.start();
+                System.out.println("Started background music: " + filepath);
             } else {
-                System.out.println("Sound file not found!");
+                System.out.println("Background music file not found: " + filepath);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Error playing background music: " + e.getMessage());
         }
     }
     
     public void eatSoundEffect(String filepath) {
         try {
             File soundFile = new File(filepath);
-            AudioInputStream audioInput = AudioSystem.getAudioInputStream(soundFile);
-            Clip eatClip = AudioSystem.getClip();
-            eatClip.open(audioInput);
-            FloatControl gainControl = (FloatControl) eatClip.getControl(FloatControl.Type.MASTER_GAIN);
-            gainControl.setValue(-10.0f);
-            eatClip.start();
+            if (soundFile.exists()) {
+                AudioInputStream audioInput = AudioSystem.getAudioInputStream(soundFile);
+                Clip eatClip = AudioSystem.getClip();
+                eatClip.open(audioInput);
+                FloatControl gainControl = (FloatControl) eatClip.getControl(FloatControl.Type.MASTER_GAIN);
+                gainControl.setValue(getDecibelFromPercent());
+                eatClip.start();
+                System.out.println("Playing eat sound: " + filepath);
+            } else {
+                System.out.println("Eat sound file not found: " + filepath);
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Error playing eat sound: " + e.getMessage());
         }
     }
     
@@ -563,12 +682,15 @@ private void applyPowerUp(PowerUp powerUp) {
                 AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
                 gameOverMusicClip = AudioSystem.getClip();
                 gameOverMusicClip.open(audioInput);
+                FloatControl gainControl = (FloatControl) gameOverMusicClip.getControl(FloatControl.Type.MASTER_GAIN);
+                gainControl.setValue(getDecibelFromPercent());
                 gameOverMusicClip.start();
+                System.out.println("Playing game over sound: " + filepath);
             } else {
-                System.out.println("Sound file not found!");
+                System.out.println("Game over sound file not found: " + filepath);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Error playing game over sound: " + e.getMessage());
         }
     }
     

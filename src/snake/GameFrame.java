@@ -4,14 +4,19 @@ import javax.swing.*;
 import java.awt.CardLayout;
 import java.sql.SQLException;
 
-public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePanel.GameListener, ScoreboardPanel.ScoreboardListener {
+public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePanel.GameListener, ScoreboardPanel.ScoreboardListener, SettingPanel.SettingsListener {
     private CardLayout cardLayout;
     private JPanel mainPanel;
     private MenuPanel menuPanel;
     private GamePanel gamePanel;
+    private SettingPanel settingPanel;
     private ScoreboardPanel scoreboardPanel;
     private String currentPlayerID = "";
     private String currentPlayerName = "";
+    
+    public String getCurrentPlayerID() {
+        return currentPlayerID;
+    }
     
     public GameFrame() {
         this.setTitle("Rắn Săn Mồi By PVM :D");
@@ -23,10 +28,12 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
         gamePanel.setGameListener(this);
         gamePanel.setParentFrame(this);
         scoreboardPanel = new ScoreboardPanel(this);
+        settingPanel = new SettingPanel(currentPlayerID);
         
         mainPanel.add(menuPanel, "MENU");
         mainPanel.add(gamePanel, "GAME");
         mainPanel.add(scoreboardPanel, "SCOREBOARD");
+        mainPanel.add(settingPanel, "SETTINGS");
         
         cardLayout.show(mainPanel, "MENU");
         
@@ -39,18 +46,89 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
         menuPanel.requestFocusInWindow();
     }
     
+    public void showSettings(String playerID) {
+        DatabaseManager sqlManager = new DatabaseManager();
+        try {
+            if (playerID == null || playerID.isEmpty()) {
+                playerID = createDefaultPlayer();
+                currentPlayerID = playerID;
+                currentPlayerName = "Người chơi";
+            } else if (!sqlManager.isPlayerExists(playerID)) {
+                playerID = sqlManager.createPlayer(currentPlayerName.isEmpty() ? "Người chơi" : currentPlayerName);
+                currentPlayerID = playerID;
+            }
+
+            settingPanel = new SettingPanel(playerID);
+            settingPanel.setSettingsListener(this);
+            mainPanel.add(settingPanel, "SETTINGS");
+            cardLayout.show(mainPanel, "SETTINGS");
+            settingPanel.requestFocusInWindow();
+
+            DatabaseManager.Settings settings = sqlManager.getPlayerSettings(playerID);
+            if (settings != null) {
+                settingPanel.setTheme(Theme.Type.valueOf(settings.getTheme()));
+                settingPanel.setSoundVolumePercent(settings.getSoundVolumePercent());
+            } else {
+                settingPanel.setTheme(Theme.Type.CLASSIC);
+                settingPanel.setSoundVolumePercent(50);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error loading settings: " + e.getMessage());
+            showMessage("Không thể tải cài đặt. Vui lòng thử lại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        } finally {
+            sqlManager.close();
+        }
+    }
+   
+    public void onSaveSettings(String playerID, Theme.Type theme, int soundVolumePercent) {
+        DatabaseManager sqlManager = new DatabaseManager();
+        try {
+            boolean saved = sqlManager.savePlayerSettings(playerID, theme.toString(), soundVolumePercent);
+            if (saved) {
+                gamePanel.setTheme(theme);
+                gamePanel.setSoundVolumePercent(soundVolumePercent);
+                showMessage("Cài đặt đã được lưu!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                showMessage("Không thể lưu cài đặt!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        } finally {
+            sqlManager.close();
+        }
+        showMenu();
+    }
+    
+    public void onBack() {
+        showMenu();
+    }
+    
+    @Override
+    public void onShowSettings(String playerID) {
+        showSettings(playerID);
+    }
+    
     @Override
     public void onStartGame(String playerName) {
         DatabaseManager sqlManager = new DatabaseManager();
         try {
-            currentPlayerID = sqlManager.createPlayer(playerName);
-            currentPlayerName = playerName;
+            currentPlayerID = sqlManager.ensurePlayerExists(playerName.trim());
+            currentPlayerName = playerName.trim();
             gamePanel.setPlayerName(playerName);
+
+            DatabaseManager.Settings settings = sqlManager.getPlayerSettings(currentPlayerID);
+            if (settings != null) {
+                gamePanel.setTheme(Theme.Type.valueOf(settings.getTheme()));
+                gamePanel.setSoundVolumePercent(settings.getSoundVolumePercent());
+            } else {
+                gamePanel.setTheme(Theme.Type.CLASSIC);
+                gamePanel.setSoundVolumePercent(50);
+            }
+
             cardLayout.show(mainPanel, "GAME");
             gamePanel.requestFocusInWindow();
             gamePanel.startGame();
+            gamePanel.loadGameState(currentPlayerID);
         } catch (SQLException e) {
-            System.err.println("Error creating player: " + e.getMessage());
+            System.err.println("Lỗi tạo người chơi: " + e.getMessage());
             showMessage("Không thể tạo người chơi. Vui lòng thử lại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
         } finally {
             sqlManager.close();
@@ -126,9 +204,11 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
         DatabaseManager sqlManager = new DatabaseManager();
         try {
             currentPlayerName = "Người chơi";
-            return sqlManager.createPlayer(currentPlayerName);
+            String playerID = sqlManager.ensurePlayerExists(currentPlayerName);
+            currentPlayerID = playerID;
+            return playerID;
         } catch (SQLException e) {
-            System.err.println("Error creating default player: " + e.getMessage());
+            System.err.println("Lỗi tạo người chơi mặc định: " + e.getMessage());
             return "";
         } finally {
             sqlManager.close();
@@ -147,12 +227,7 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
     
     public String getCurrentPlayerName() {
         return currentPlayerName;
-    }
-    
-    public String getCurrentPlayerID() {
-        return currentPlayerID;
-    }
-    
+    } 
     public void showMessage(String message, String title, int messageType) {
         JOptionPane.showMessageDialog(this, message, title, messageType);
     }
