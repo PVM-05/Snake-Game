@@ -9,6 +9,7 @@ public class SettingPanel extends JPanel {
     private static final int SCREEN_WIDTH = 600;
     private static final int SCREEN_HEIGHT = 600;
     private String playerID;
+    private boolean fromPauseMenu;
     private Theme.Type selectedTheme = Theme.Type.CLASSIC;
     private int soundVolumePercent = 50;
     private SettingsListener settingsListener;
@@ -18,10 +19,12 @@ public class SettingPanel extends JPanel {
     public interface SettingsListener {
         void onSaveSettings(String playerID, Theme.Type theme, int soundVolumePercent);
         void onBack();
+        void onResumeGame(String playerID, Theme.Type theme, int soundVolumePercent);
     }
 
-    public SettingPanel(String playerID) {
+    public SettingPanel(String playerID, boolean fromPauseMenu) {
         this.playerID = playerID;
+        this.fromPauseMenu = fromPauseMenu;
         setBackground(Color.BLACK);
         setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setLayout(new GridBagLayout());
@@ -79,7 +82,7 @@ public class SettingPanel extends JPanel {
         add(volumeLabel, gbc);
 
         // Save button
-        JButton saveButton = createStyledButton("LƯU");
+        JButton saveButton = createStyledButton("LƯU VÀ THOÁT");
         saveButton.addActionListener(e -> {
             if (settingsListener != null) {
                 settingsListener.onSaveSettings(playerID, selectedTheme, soundVolumePercent);
@@ -87,6 +90,18 @@ public class SettingPanel extends JPanel {
         });
         gbc.gridy = 6;
         add(saveButton, gbc);
+
+        // Continue button (only if from PauseMenu)
+        if (fromPauseMenu) {
+            JButton continueButton = createStyledButton("TIẾP TỤC");
+            continueButton.addActionListener(e -> {
+                if (settingsListener != null) {
+                    settingsListener.onResumeGame(playerID, selectedTheme, soundVolumePercent);
+                }
+            });
+            gbc.gridy = 7;
+            add(continueButton, gbc);
+        }
 
         // Back button
         JButton backButton = createStyledButton("QUAY LẠI");
@@ -96,7 +111,7 @@ public class SettingPanel extends JPanel {
                 settingsListener.onBack();
             }
         });
-        gbc.gridy = 7;
+        gbc.gridy = fromPauseMenu ? 8 : 7;
         add(backButton, gbc);
     }
 
@@ -126,12 +141,10 @@ public class SettingPanel extends JPanel {
 
         // Hover effect
         button.addMouseListener(new MouseAdapter() {
-
             @Override
             public void mouseEntered(MouseEvent e) {
                 button.setBackground(button.getBackground().equals(Color.GREEN.darker()) ? Color.GREEN : Color.GRAY);
             }
-
 
             @Override
             public void mouseExited(MouseEvent e) {

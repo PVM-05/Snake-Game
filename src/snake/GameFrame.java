@@ -18,6 +18,10 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
         return currentPlayerID;
     }
     
+    public GamePanel getGamePanel() {
+        return gamePanel;
+    }
+    
     public GameFrame() {
         this.setTitle("Rắn Săn Mồi By PVM :D");
         cardLayout = new CardLayout();
@@ -28,7 +32,7 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
         gamePanel.setGameListener(this);
         gamePanel.setParentFrame(this);
         scoreboardPanel = new ScoreboardPanel(this);
-        settingPanel = new SettingPanel(currentPlayerID);
+        settingPanel = new SettingPanel(currentPlayerID, false);
         
         mainPanel.add(menuPanel, "MENU");
         mainPanel.add(gamePanel, "GAME");
@@ -46,7 +50,7 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
         menuPanel.requestFocusInWindow();
     }
     
-    public void showSettings(String playerID) {
+    public void showSettings(String playerID, boolean fromPauseMenu) {
         DatabaseManager sqlManager = new DatabaseManager();
         try {
             if (playerID == null || playerID.isEmpty()) {
@@ -58,8 +62,16 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
                 currentPlayerID = playerID;
             }
 
-            settingPanel = new SettingPanel(playerID);
+            // Save game state before opening settings
+            gamePanel.saveGameState(playerID);
+            
+            // Stop all sounds
+            gamePanel.stopAllSounds();
+            
+            // Create new SettingPanel instance
+            settingPanel = new SettingPanel(playerID, fromPauseMenu);
             settingPanel.setSettingsListener(this);
+            mainPanel.remove(mainPanel.getComponent(mainPanel.getComponentCount() - 1)); // Remove old settings panel
             mainPanel.add(settingPanel, "SETTINGS");
             cardLayout.show(mainPanel, "SETTINGS");
             settingPanel.requestFocusInWindow();
@@ -79,7 +91,11 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
             sqlManager.close();
         }
     }
-   
+    
+    public void showSettings(String playerID) {
+        showSettings(playerID, false);
+    }
+    
     public void onSaveSettings(String playerID, Theme.Type theme, int soundVolumePercent) {
         DatabaseManager sqlManager = new DatabaseManager();
         try {
@@ -97,13 +113,30 @@ public class GameFrame extends JFrame implements MenuPanel.MenuListener, GamePan
         showMenu();
     }
     
+    public void onResumeGame(String playerID, Theme.Type theme, int soundVolumePercent) {
+        DatabaseManager sqlManager = new DatabaseManager();
+        boolean saved = sqlManager.savePlayerSettings(playerID, theme.toString(), soundVolumePercent);
+        if (saved) {
+            gamePanel.setTheme(theme);
+            gamePanel.setSoundVolumePercent(soundVolumePercent);
+            gamePanel.loadGameState(playerID);
+            cardLayout.show(mainPanel, "GAME");
+            gamePanel.requestFocusInWindow();
+            gamePanel.backgroundMusic("src/snake/background.wav");
+            showMessage("Cài đặt đã được lưu! Tiếp tục chơi.", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            showMessage("Không thể lưu cài đặt!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+        sqlManager.close();
+    }
+    
     public void onBack() {
         showMenu();
     }
     
     @Override
     public void onShowSettings(String playerID) {
-        showSettings(playerID);
+        showSettings(playerID, false);
     }
     
     @Override

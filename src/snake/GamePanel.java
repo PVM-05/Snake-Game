@@ -137,7 +137,7 @@ public class GamePanel extends JPanel implements ActionListener {
 
     public void saveGameState(String playerID) {
         if (playerID == null || playerID.isEmpty()) {
-            System.err.println("PlayerID không hợp lệ khi lưu trạng thái game.");
+            System.err.println("PlayerID khong hop le khi luu trang thai game.");
             return;
         }
         GameState state = new GameState(x, y, bodyParts, applesEaten, appleX, appleY, direction,
@@ -147,12 +147,12 @@ public class GamePanel extends JPanel implements ActionListener {
         try {
             boolean saved = sqlManager.saveGameState(playerID, state);
             if (saved) {
-                System.out.println("Lưu trạng thái game thành công cho playerID: " + playerID);
+                System.out.println("Luu trang thai game thanh cong cho playerID: " + playerID);
             } else {
-                System.out.println("Lưu trạng thái game thất bại cho playerID: " + playerID);
+                System.out.println("Luu trang thai game that bai cho playerID: " + playerID);
             }
         } catch (Exception e) {
-            System.err.println("Lỗi lưu trạng thái game: " + e.getMessage());
+            System.err.println("Loi luu trang thai game: " + e.getMessage());
         } finally {
             sqlManager.close();
         }
@@ -362,7 +362,7 @@ public class GamePanel extends JPanel implements ActionListener {
     }
     
     private void drawApple(Graphics2D g2d) {
-        g2d.setColor(Color.RED);
+        g2d.setColor(theme.getAppleColor());
         g2d.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
         g2d.setColor(new Color(255, 100, 100));
         g2d.fillOval(appleX + 5, appleY + 5, UNIT_SIZE/3, UNIT_SIZE/3);
@@ -371,7 +371,7 @@ public class GamePanel extends JPanel implements ActionListener {
     private void drawSnake(Graphics2D g2d) {
         for (int i = 0; i < bodyParts; i++) {
             if (i == 0) {
-                g2d.setColor(Color.GREEN);
+                g2d.setColor(theme.getSnakeHeadColor());
                 g2d.fillRoundRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE, 20, 20);
                 g2d.setColor(Color.WHITE);
                 g2d.fillOval(x[i] + 5, y[i] + 5, 6, 6);
@@ -381,7 +381,7 @@ public class GamePanel extends JPanel implements ActionListener {
                 g2d.fillOval(x[i] + 16, y[i] + 7, 2, 2);
             } else {
                 int greenValue = Math.max(100, 180 - (i * 10));
-                g2d.setColor(new Color(45, greenValue, 0));
+                g2d.setColor(theme.getSnakeBodyColor(i));
                 g2d.fillRoundRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE, 15, 15);
             }
             if (i > 0) {

@@ -315,7 +315,7 @@ public class DatabaseManager {
 
     public String getPlayerNameByID(String playerID) throws SQLException {
         if (conn == null) {
-            throw new SQLException("Không tồn tại kết nối với database");
+            throw new SQLException("Khong ton tai ket noi database");
         }
         String sql = "SELECT name FROM Player WHERE playerID = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -331,22 +331,22 @@ public class DatabaseManager {
 
     public boolean saveGameState(String playerID, GameState state) {
         if (conn == null) {
-            System.err.println("Không tồn tại kết nối database");
+            System.err.println("Khong ton tai ket noi database");
             return false;
         }
         String usedPlayerID = playerID;
         try {
             if (!isPlayerExists(playerID)) {
-                System.out.println("PlayerID không tồn tại: " + playerID + ". Tạo người chơi mới...");
+                System.out.println("PlayerID khong ton tai: " + playerID );
                 String name = getPlayerNameByID(playerID);
                 if (name == null) {
                     name = "Người chơi";
                 }
                 usedPlayerID = createPlayer(name);
-                System.out.println("Đã tạo player mới với ID: " + usedPlayerID + " cho tên: " + name);
+                System.out.println("Da tao player moi voi ID: " + usedPlayerID + " cho ten: " + name);
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi kiểm tra/tạo người chơi: " + e.getMessage());
+            System.err.println("Loi tao nguoi choi: " + e.getMessage());
             return false;
         }
 
@@ -362,10 +362,10 @@ public class DatabaseManager {
             stmt.setBytes(2, stateData);
             stmt.setBytes(3, stateData);
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Lưu trạng thái game cho playerID: " + usedPlayerID);
+            System.out.println("Luu trang thai game playerID: " + usedPlayerID);
             return rowsAffected > 0;
         } catch (SQLException | IOException e) {
-            System.err.println("Lỗi lưu trạng thái game: " + e.getMessage());
+            System.err.println("Loi luu trang thai game: " + e.getMessage());
             return false;
         }
     }

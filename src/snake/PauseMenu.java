@@ -42,7 +42,13 @@ public class PauseMenu extends JDialog {
         JButton settingsButton = createStyledButton("CÀI ĐẶT");
         settingsButton.addActionListener(e -> {
             if (owner instanceof GameFrame) {
-                ((GameFrame) owner).showSettings(((GameFrame) owner).getCurrentPlayerID());
+                GameFrame gameFrame = (GameFrame) owner;
+                // Lưu trạng thái game trước khi mở cài đặt
+                gameFrame.getGamePanel().saveGameState(gameFrame.getCurrentPlayerID());
+                // Đóng PauseMenu trước khi mở SettingPanel
+                dispose();
+                // Mở SettingPanel với fromPauseMenu = true
+                gameFrame.showSettings(gameFrame.getCurrentPlayerID(), true);
             }
         });
         gbc.gridy = 2;
