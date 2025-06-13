@@ -1,27 +1,19 @@
 package snake;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Rectangle;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import javax.swing.JPanel;
 
 public class SettingPanel extends JPanel {
-    private String playerID;
     private static final int SCREEN_WIDTH = 600;
     private static final int SCREEN_HEIGHT = 600;
+    private String playerID;
     private Theme.Type selectedTheme = Theme.Type.CLASSIC;
-    private int soundVolumePercent = 50; // Phần trăm âm lượng (0-100)
+    private int soundVolumePercent = 50;
     private SettingsListener settingsListener;
-    private Rectangle saveButtonBounds;
-    private Rectangle themeButtonBounds;
-    private Rectangle backButtonBounds;
-    private boolean saveButtonHovered;
-    private boolean themeButtonHovered;
-    private boolean backButtonHovered;
+    private JSlider volumeSlider;
+    private JLabel volumeLabel;
 
     public interface SettingsListener {
         void onSaveSettings(String playerID, Theme.Type theme, int soundVolumePercent);
@@ -30,9 +22,82 @@ public class SettingPanel extends JPanel {
 
     public SettingPanel(String playerID) {
         this.playerID = playerID;
-        setPreferredSize(new java.awt.Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setBackground(Color.BLACK);
-        addMouseListener(new SettingsMouseAdapter());
+        setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
+        setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridwidth = GridBagConstraints.REMAINDER;
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // Title
+        JLabel titleLabel = new JLabel("CÀI ĐẶT", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Montserrat", Font.BOLD, 30));
+        titleLabel.setForeground(Color.WHITE);
+        gbc.gridy = 0;
+        add(titleLabel, gbc);
+
+        // Theme selection
+        JLabel themeLabel = new JLabel("Theme: ", SwingConstants.RIGHT);
+        themeLabel.setFont(new Font("Montserrat", Font.PLAIN, 20));
+        themeLabel.setForeground(Color.WHITE);
+        gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.EAST;
+        add(themeLabel, gbc);
+
+        JButton themeButton = createStyledButton(selectedTheme.toString());
+        themeButton.addActionListener(e -> {
+            Theme.Type[] themes = Theme.Type.values();
+            selectedTheme = themes[(selectedTheme.ordinal() + 1) % themes.length];
+            themeButton.setText(selectedTheme.toString());
+        });
+        gbc.gridy = 2;
+        add(themeButton, gbc);
+
+        // Volume slider
+        JLabel volumeTitle = new JLabel("Âm lượng: ", SwingConstants.RIGHT);
+        volumeTitle.setFont(new Font("Montserrat", Font.PLAIN, 20));
+        volumeTitle.setForeground(Color.WHITE);
+        gbc.gridy = 3;
+        add(volumeTitle, gbc);
+
+        volumeSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, soundVolumePercent);
+        volumeSlider.setBackground(Color.BLACK);
+        volumeSlider.setForeground(Color.CYAN);
+        volumeSlider.setPreferredSize(new Dimension(200, 50));
+        volumeSlider.addChangeListener(e -> {
+            soundVolumePercent = volumeSlider.getValue();
+            volumeLabel.setText(soundVolumePercent + "%");
+        });
+        gbc.gridy = 4;
+        add(volumeSlider, gbc);
+
+        volumeLabel = new JLabel(soundVolumePercent + "%", SwingConstants.CENTER);
+        volumeLabel.setFont(new Font("Montserrat", Font.PLAIN, 16));
+        volumeLabel.setForeground(Color.WHITE);
+        gbc.gridy = 5;
+        add(volumeLabel, gbc);
+
+        // Save button
+        JButton saveButton = createStyledButton("LƯU");
+        saveButton.addActionListener(e -> {
+            if (settingsListener != null) {
+                settingsListener.onSaveSettings(playerID, selectedTheme, soundVolumePercent);
+            }
+        });
+        gbc.gridy = 6;
+        add(saveButton, gbc);
+
+        // Back button
+        JButton backButton = createStyledButton("QUAY LẠI");
+        backButton.setBackground(Color.GRAY.darker());
+        backButton.addActionListener(e -> {
+            if (settingsListener != null) {
+                settingsListener.onBack();
+            }
+        });
+        gbc.gridy = 7;
+        add(backButton, gbc);
     }
 
     public void setSettingsListener(SettingsListener listener) {
@@ -46,103 +111,34 @@ public class SettingPanel extends JPanel {
 
     public void setSoundVolumePercent(int volumePercent) {
         this.soundVolumePercent = Math.max(0, Math.min(100, volumePercent));
-        repaint();
+        volumeSlider.setValue(soundVolumePercent);
+        volumeLabel.setText(soundVolumePercent + "%");
     }
 
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
+    private JButton createStyledButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Montserrat", Font.BOLD, 20));
+        button.setBackground(Color.GREEN.darker());
+        button.setForeground(Color.WHITE);
+        button.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
+        button.setFocusPainted(false);
+        button.setPreferredSize(new Dimension(200, 40));
 
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("Arial", Font.BOLD, 30));
-        FontMetrics titleMetrics = g.getFontMetrics();
-        String title = "Cài đặt";
-        g.drawString(title, (SCREEN_WIDTH - titleMetrics.stringWidth(title)) / 2, 100);
+        // Hover effect
+        button.addMouseListener(new MouseAdapter() {
 
-        g.setFont(new Font("Arial", Font.PLAIN, 20));
-        FontMetrics buttonMetrics = g.getFontMetrics();
-        String themeText = "Theme: " + selectedTheme;
-        int themeX = (SCREEN_WIDTH - buttonMetrics.stringWidth(themeText)) / 2;
-        int themeY = 200;
-        g.setColor(themeButtonHovered ? new Color(70, 200, 70) : Color.GREEN);
-        g.fillRoundRect(themeX - 20, themeY - 25, buttonMetrics.stringWidth(themeText) + 40, 35, 15, 15);
-        g.setColor(Color.WHITE);
-        g.drawRoundRect(themeX - 20, themeY - 25, buttonMetrics.stringWidth(themeText) + 40, 35, 15, 15);
-        g.drawString(themeText, themeX, themeY);
-        themeButtonBounds = new Rectangle(themeX - 20, themeY - 25, buttonMetrics.stringWidth(themeText) + 40, 35);
-
-        g.setColor(Color.WHITE);
-        g.drawString("Âm lượng: " + soundVolumePercent + "%", 200, 300);
-        g.setColor(Color.GRAY);
-        g.fillRect(200, 310, 200, 10);
-        int volumeX = 200 + (soundVolumePercent * 200 / 100);
-        g.setColor(Color.CYAN);
-        g.fillOval(Math.max(200, Math.min(400, volumeX)) - 5, 305, 10, 20);
-
-        String saveText = "Lưu";
-        int saveX = (SCREEN_WIDTH - buttonMetrics.stringWidth(saveText)) / 2;
-        int saveY = 400;
-        g.setColor(saveButtonHovered ? new Color(70, 200, 70) : Color.GREEN);
-        g.fillRoundRect(saveX - 20, saveY - 25, buttonMetrics.stringWidth(saveText) + 40, 35, 15, 15);
-        g.setColor(Color.WHITE);
-        g.drawRoundRect(saveX - 20, saveY - 25, buttonMetrics.stringWidth(saveText) + 40, 35, 15, 15);
-        g.drawString(saveText, saveX, saveY);
-        saveButtonBounds = new Rectangle(saveX - 20, saveY - 25, buttonMetrics.stringWidth(saveText) + 40, 35);
-
-        String backText = "Quay lại";
-        int backX = (SCREEN_WIDTH - buttonMetrics.stringWidth(backText)) / 2;
-        int backY = saveY + 60;
-        g.setColor(backButtonHovered ? new Color(150, 150, 150) : Color.GRAY);
-        g.fillRoundRect(backX - 20, backY - 25, buttonMetrics.stringWidth(backText) + 40, 35, 15, 15);
-        g.setColor(Color.WHITE);
-        g.drawRoundRect(backX - 20, backY - 25, buttonMetrics.stringWidth(backText) + 40, 35, 15, 15);
-        g.drawString(backText, backX, backY);
-        backButtonBounds = new Rectangle(backX - 20, backY - 25, buttonMetrics.stringWidth(backText) + 40, 35);
-    }
-
-    private class SettingsMouseAdapter extends MouseAdapter {
-        @Override
-        public void mouseClicked(MouseEvent e) {
-            int mouseX = e.getX();
-            int mouseY = e.getY();
-
-            if (themeButtonBounds.contains(mouseX, mouseY)) {
-                Theme.Type[] themes = Theme.Type.values();
-                selectedTheme = themes[(selectedTheme.ordinal() + 1) % themes.length];
-                repaint();
-            } else if (saveButtonBounds.contains(mouseX, mouseY)) {
-                if (settingsListener != null) {
-                    settingsListener.onSaveSettings(playerID, selectedTheme, soundVolumePercent);
-                }
-            } else if (backButtonBounds.contains(mouseX, mouseY)) {
-                if (settingsListener != null) {
-                    settingsListener.onBack();
-                }
-            } else if (mouseY >= 305 && mouseY <= 325 && mouseX >= 200 && mouseX <= 400) {
-                soundVolumePercent = (int) ((mouseX - 200) / 200.0f * 100);
-                setSoundVolumePercent(soundVolumePercent);
-                repaint();
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(button.getBackground().equals(Color.GREEN.darker()) ? Color.GREEN : Color.GRAY);
             }
-        }
 
-        @Override
-        public void mouseMoved(MouseEvent e) {
-            int mouseX = e.getX();
-            int mouseY = e.getY();
 
-            boolean wasSaveHovered = saveButtonHovered;
-            boolean wasThemeHovered = themeButtonHovered;
-            boolean wasBackHovered = backButtonHovered;
-
-            saveButtonHovered = saveButtonBounds != null && saveButtonBounds.contains(mouseX, mouseY);
-            themeButtonHovered = themeButtonBounds != null && themeButtonBounds.contains(mouseX, mouseY);
-            backButtonHovered = backButtonBounds != null && backButtonBounds.contains(mouseX, mouseY);
-
-            if (wasSaveHovered != saveButtonHovered || 
-                wasThemeHovered != themeButtonHovered || 
-                wasBackHovered != backButtonHovered) {
-                repaint();
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(button.getBackground().equals(Color.GREEN) ? Color.GREEN.darker() : Color.GRAY.darker());
             }
-        }
+        });
+
+        return button;
     }
 }
